@@ -29,12 +29,13 @@ class MicArray(object):
         self.pyaudio_instance = pyaudio.PyAudio()
         self.queue = Queue.Queue()
         self.sep_queue = Queue.Queue()
+
         self.quit_event = threading.Event()
         self.channels = channels
         self.sample_rate = rate
         self.chunk_size = chunk_size if chunk_size else rate / 100
         
-        self.beamformer = DAS(eps=0.01, nfft=1024)
+        # self.beamformer = DAS(eps=0.01, nfft=1024)
 
         device_index = None
         for i in range(self.pyaudio_instance.get_device_count()):
@@ -59,6 +60,17 @@ class MicArray(object):
             stream_callback=self._callback,
             input_device_index=device_index,
         )
+
+        # build tdoa matrix
+        mic_theta           = np.arange(0, 2*np.pi, 2*np.pi/6)
+        self.tdoa_matrix    = np.array([np.cos(mic_theta[1:]), np.sin(mic_theta[1:])]).T
+
+        self.tdoa_matrix -= np.ones((len(mic_theta)-1, 2)) \
+                             * np.array([np.cos(mic_theta[0]), np.sin(mic_theta[0])])
+
+        self.tdoa_measures  = np.ones(((len(mic_theta)-1, ))) \
+                                * SOUND_SPEED / MIC_DISTANCE_6P1
+        
 
     def _callback(self, in_data, frame_count, time_info, status):
         self.queue.put(in_data)
@@ -94,37 +106,37 @@ class MicArray(object):
 
     def get_direction(self, buf):
         best_guess = None
-        if self.channels == 8:
-            MIC_GROUP_N = 5
-            MIC_GROUP = [[1, 1+i] for i in range(1, MIC_GROUP_N+1)]
+        MIC_GROUP_N = 5
+        MIC_GROUP = [[1, 1+i] for i in range(1, MIC_GROUP_N+1)]
 
-            tau = [0] * MIC_GROUP_N
+        tau = [0] * MIC_GROUP_N
 
-            # estimate each group of delay 
-            for i, v in enumerate(MIC_GROUP):
-                tau[i], _ = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.sample_rate, max_tau=MAX_TDOA_6P1, interp=1)
+        # estimate each group of delay 
+        for i, v in enumerate(MIC_GROUP):
+            tau[i], _ = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.sample_rate, max_tau=MAX_TDOA_6P1, interp=1)
+
+        # least square solution of (cos, sin)
+        sol = np.linalg.pinv(self.tdoa_matrix).dot( \
+              (self.tdoa_measures * np.array(tau)).reshape(MIC_GROUP_N, 1)) 
+
+        # found out theta
+        return (math.atan2(sol[1], sol[0])/np.pi*180.0 + 180.0) 
 
 
-            # least square solution of (cos, sin)
-
-            # found out theta
-
-        return best_guess
-
-    def separationAt(self, buff, directions):
-        """
-        Arg:
-        --------------------------------------------------------
-        buff      [numpy.ndarray]   : shape(#frames, #channels)
-        direction [array of floats] : stores separatino directions
-
-        Return:
-        --------------------------------------------------------
-        en_speech [numpy.ndarray]   : shape(#frames, len(directions))
-        """
-        # buff.shape = -1, 8
-
-        self.sep_queue.put(self.beamformer.sound_separation(buff[:, 1:7], directions))
+##    def separationAt(self, buff, directions):
+##        """
+##        Arg:
+##        --------------------------------------------------------
+##        buff      [numpy.ndarray]   : shape(#frames, #channels)
+##        direction [array of floats] : stores separatino directions
+##
+##        Return:
+##        --------------------------------------------------------
+##        en_speech [numpy.ndarray]   : shape(#frames, len(directions))
+##        """
+##        # buff.shape = -1, 8
+##
+##        self.sep_queue.put(self.beamformer.sound_separation(buff[:, 1:7], directions))
 
 
 
@@ -148,6 +160,8 @@ def test_8mic():
         for frames in mic.read_chunks():
             chunk = np.fromstring(frames, dtype='int16')
             direction = mic.get_direction(chunk)
+            direction = (direction + 210.0) % 360
+            
             pixel_ring.set_direction(direction)
             print(int(direction))
            #  chunk = chunk / (2**15)

@@ -38,7 +38,7 @@ class Beamformer(object):
         raise NotImplementedError
     
     @staticmethod
-    def generate_uca_position(radius, num_mics):
+    def generate_uca_position(radius, num_mics, mic_theta=None):
         """
         base on respeaker microphone layout. 
         
@@ -48,7 +48,9 @@ class Beamformer(object):
         num_mics[int]   : # of mic in microphone array 
         """
         d_theta     = 2*np.pi / num_mics
-        mic_theta   = np.arange(d_theta, 2*np.pi, d_theta) 
+        
+        if mic_theta is None:
+            mic_theta   = np.arange(d_theta, 2*np.pi, d_theta) 
         # mic_theta   = np.arange(d_theta/2, 2*np.pi, d_theta) 
         
         pos = radius * np.array([np.sin(mic_theta), np.cos(mic_theta)])
