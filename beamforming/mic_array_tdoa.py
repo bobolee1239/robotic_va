@@ -95,24 +95,19 @@ class MicArray(object):
     def get_direction(self, buf):
         best_guess = None
         if self.channels == 8:
-            MIC_GROUP_N = 3
-            MIC_GROUP = [[1, 4], [2, 5], [3, 6]]
+            MIC_GROUP_N = 5
+            MIC_GROUP = [[1, 1+i] for i in range(1, MIC_GROUP_N+1)]
 
             tau = [0] * MIC_GROUP_N
-            theta = [0] * MIC_GROUP_N
 
-            # buf = np.fromstring(buf, dtype='int16')
+            # estimate each group of delay 
             for i, v in enumerate(MIC_GROUP):
                 tau[i], _ = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.sample_rate, max_tau=MAX_TDOA_6P1, interp=1)
-                theta[i] = math.asin(tau[i] / MAX_TDOA_6P1) * 180 / math.pi
 
-            min_index = np.argmin(np.abs(tau))
-            if (min_index != 0 and theta[min_index - 1] >= 0) or (min_index == 0 and theta[MIC_GROUP_N - 1] < 0):
-                best_guess = (theta[min_index] + 360) % 360
-            else:
-                best_guess = (180 - theta[min_index])
 
-            best_guess = (best_guess + 120 + min_index * 60) % 360
+            # least square solution of (cos, sin)
+
+            # found out theta
 
         return best_guess
 
