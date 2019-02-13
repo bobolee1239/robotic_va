@@ -304,7 +304,7 @@ def task(quit_event):
                 quit_event=quit_event, name='respeaker-7')
     
     while not quit_event.is_set():
-        if uca.wakeup('respeaker'):
+        if uca.wakeup('bagel'):
             print('Wake up')
             time.sleep(1.0)
             # data = uca.listen()
