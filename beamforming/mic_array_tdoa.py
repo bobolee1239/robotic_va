@@ -107,7 +107,7 @@ class MicArray(object):
     def get_direction(self, buf):
         best_guess = None
         MIC_GROUP_N = 5
-        MIC_GROUP = [[1, 1+i] for i in range(1, MIC_GROUP_N+1)]
+        MIC_GROUP = [[1+i, 1] for i in range(1, MIC_GROUP_N+1)]
 
         tau = [0] * MIC_GROUP_N
 
@@ -120,7 +120,8 @@ class MicArray(object):
               (self.tdoa_measures * np.array(tau)).reshape(MIC_GROUP_N, 1)) 
 
         # found out theta
-        return (math.atan2(sol[1], sol[0])/np.pi*180.0 + 180.0) 
+        # another 180.0 for positive value, 30.0 for respeaker architecture
+        return (math.atan2(sol[1], sol[0])/np.pi*180.0 + 210.0) % 360 
 
 
 ##    def separationAt(self, buff, directions):
@@ -160,7 +161,6 @@ def test_8mic():
         for frames in mic.read_chunks():
             chunk = np.fromstring(frames, dtype='int16')
             direction = mic.get_direction(chunk)
-            direction = (direction + 210.0) % 360
             
             pixel_ring.set_direction(direction)
             print(int(direction))
