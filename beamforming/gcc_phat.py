@@ -46,7 +46,7 @@ def gcc_phat(sig, refsig, fs=1, max_tau=None, interp=16):
 
     tau = shift / float(interp * fs)
     
-    return tau, cc
+    return tau
 
 
 def main():

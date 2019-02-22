@@ -103,7 +103,7 @@ class MicArray(object):
 
             # buf = np.fromstring(buf, dtype='int16')
             for i, v in enumerate(MIC_GROUP):
-                tau[i], _ = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.sample_rate, max_tau=MAX_TDOA_6P1, interp=1)
+                tau[i] = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.sample_rate, max_tau=MAX_TDOA_6P1, interp=1)
                 theta[i] = math.asin(tau[i] / MAX_TDOA_6P1) * 180 / math.pi
 
             min_index = np.argmin(np.abs(tau))

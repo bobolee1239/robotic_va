@@ -113,7 +113,7 @@ class MicArray(object):
 
         # estimate each group of delay 
         for i, v in enumerate(MIC_GROUP):
-            tau[i], _ = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.sample_rate, max_tau=MAX_TDOA_6P1, interp=10)
+            tau[i] = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.sample_rate, max_tau=MAX_TDOA_6P1, interp=10)
 
         # least square solution of (cos, sin)
         sol = np.linalg.pinv(self.tdoa_matrix).dot( \
