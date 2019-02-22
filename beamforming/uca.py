@@ -50,6 +50,7 @@ class UCA(object):
         self.nchannels  = (num_mics + 2 if name == 'respeaker-7' else num_mic)
         self.num_mics   = num_mics
         self.max_delay  = radius * 2 / UCA.SOUND_SPEED
+        self.delays     = None
 
         self.pyaudio_instance = pyaudio.PyAudio()
         
@@ -150,7 +151,7 @@ class UCA(object):
                     if hypothesis.hypstr.find(keyword) >= 0:
                         direction = self.DOA(raw_sigs)
                         pixel_ring.set_direction(direction)
-                        logger.info('Detect {} @ {:.2f}'.format(hypothesis.hypstr, direction))
+                        logger.info('Detect {} @ {:.2f}, delays = {}'.format(hypothesis.hypstr, direction, np.array(self.delays)*self.fs))
                         result = hypothesis.hypstr
                         break
                     else:
@@ -176,6 +177,9 @@ class UCA(object):
         # estimate each group of delay 
         for i, v in enumerate(MIC_GROUP):
             tau[i], _ = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.fs, max_tau=self.max_delay, interp=1)
+
+        # save delays for separation
+        self.delays = tau
 
         # least square solution of (cos, sin)
         sol = np.linalg.pinv(self.tdoa_matrix).dot( \
@@ -229,6 +233,7 @@ class UCA(object):
         self.status = 0     # flag down everything
         self.quit_event.set()
         self.listen_queue.put('') # put logitical false into queue
+        pixel_ring.off()
 
 
     def _callback(self, in_data, frame_count, time_info, status):
