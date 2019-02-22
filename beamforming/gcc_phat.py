@@ -35,6 +35,7 @@ def gcc_phat(sig, refsig, fs=1, max_tau=None, interp=16):
     cc = np.fft.irfft(R / np.abs(R), n=(interp * n))
 
     max_shift = int(interp * n / 2)
+
     if max_tau:
         max_shift = np.minimum(int(interp * fs * max_tau), max_shift)
 

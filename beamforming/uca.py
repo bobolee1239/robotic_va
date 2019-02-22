@@ -176,7 +176,7 @@ class UCA(object):
 
         # estimate each group of delay 
         for i, v in enumerate(MIC_GROUP):
-            tau[i], _ = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.fs, max_tau=self.max_delay, interp=1)
+            tau[i], _ = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.fs, max_tau=self.max_delay, interp=2)
 
         # save delays for separation
         self.delays = tau
