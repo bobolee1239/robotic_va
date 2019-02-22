@@ -228,12 +228,12 @@ class UCA(object):
     def close(self):
         self.quit()
         self.stream.close()
+        pixel_ring.off()
 
     def quit(self):
         self.status = 0     # flag down everything
         self.quit_event.set()
         self.listen_queue.put('') # put logitical false into queue
-        pixel_ring.off()
 
 
     def _callback(self, in_data, frame_count, time_info, status):
@@ -313,6 +313,7 @@ def task(quit_event):
             print('Wake up')
             time.sleep(1.0)
             # data = uca.listen()
+    uca.close()
          
 def main():
     import time
