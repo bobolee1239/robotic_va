@@ -131,6 +131,7 @@ class UCA(object):
             
             chunk = self.detect_queue.get()
 
+            # transform from bytes to numpy.ndarray
             raw_sigs    = np.fromstring(chunk, dtype='int16')
             data        = raw_sigs[7::8].tostring()
             
@@ -176,10 +177,10 @@ class UCA(object):
 
         # estimate each group of delay 
         for i, v in enumerate(MIC_GROUP):
-            tau[i] = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.fs, max_tau=self.max_delay, interp=5)
+            tau[i] = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.fs, max_tau=self.max_delay, interp=10)
 
         # save delays for separation
-        self.delays = tau
+        self.delays = [0] + tau
 
         # least square solution of (cos, sin)
         sol = np.linalg.pinv(self.tdoa_matrix).dot( \
@@ -244,8 +245,21 @@ class UCA(object):
             # signed 16 bits little endian
             self.detect_queue.put(in_data)
 
+        if self.status & UCA.beamforming_mask:
+            raise NotImplementedError
+
         if self.status & UCA.listening_mask:
-            active = vad.is_speech(np.fromstring(in_data, dtype='int16')[7::8].tostring())
+            # decode bytes stream 
+            mulChans = np.fromstring(in_data, dtype='int16')
+
+            active = vad.is_speech(mulChans[7::8].tostring())
+            # *************  apply beamformer  ****************
+            int_delays = (np.array(self.delays)*self.fs).astype('int32')
+            int_delays += int(np.min(int_delays))
+
+            
+            
+            # *************************************************
             if active:
                 if not self.active:
                     for d in self.listen_history:
@@ -268,9 +282,6 @@ class UCA(object):
                 logger.info('Stop listening')
 
             self.active = active
-        
-        if self.status & UCA.beamforming_mask:
-            raise NotImplementedError
 
         return None, pyaudio.paContinue
 
@@ -311,8 +322,9 @@ def task(quit_event):
     while not quit_event.is_set():
         if uca.wakeup('bagel'):
             print('Wake up')
-            time.sleep(1.0)
-            # data = uca.listen()
+            data = uca.listen()
+            playback(data)
+
     uca.close()
          
 def main():
