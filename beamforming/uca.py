@@ -273,7 +273,7 @@ class UCA(object):
                 if self.active:
                     self.listen_queue.put(in_data)
                 else:
-                    self.listen_histroy.append(in_data)
+                    self.listen_history.append(in_data)
                 self.listen_countdown[1] -= 1         # coutn down listening time
             
             if self.listen_countdown[0] <= 0 or self.listen_countdown[1] <= 0:
@@ -322,8 +322,9 @@ def task(quit_event):
     while not quit_event.is_set():
         if uca.wakeup('bagel'):
             print('Wake up')
-            data = uca.listen()
-            playback(data)
+            time.sleep(1.0)
+            #data = uca.listen()
+            #playback(data)
 
     uca.close()
          
