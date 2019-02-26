@@ -163,7 +163,7 @@ def test_8mic():
             direction = mic.get_direction(chunk)
             
             pixel_ring.set_direction(direction)
-            print(int(direction))
+            print('@ {:.2f}'.format(direction))
            #  chunk = chunk / (2**15)
            #  chunk.shape = -1, 8
 

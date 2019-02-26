@@ -129,11 +129,7 @@ class UCA(object):
             elif self.detect_queue.empty():
                 continue
             
-            chunk = self.detect_queue.get()
-
-            # transform from bytes to numpy.ndarray
-            raw_sigs    = np.fromstring(chunk, dtype='int16')
-            data        = raw_sigs[7::8].tostring()
+            data = self.detect_queue.get()
             
             self.detect_history.append(data)
 
@@ -150,9 +146,6 @@ class UCA(object):
                 self.detect_history.clear()
                 if keyword:
                     if hypothesis.hypstr.find(keyword) >= 0:
-                        direction = self.DOA(raw_sigs)
-                        pixel_ring.set_direction(direction)
-                        logger.info('Detect {} @ {:.2f}, delays = {}'.format(hypothesis.hypstr, direction, np.array(self.delays)*self.fs))
                         result = hypothesis.hypstr
                         break
                     else:
@@ -216,7 +209,7 @@ class UCA(object):
                 pass
             self.stop()
 
-            return _listen()
+        return _listen()
 
     def start(self):
         if self.stream.is_stopped():
@@ -236,29 +229,35 @@ class UCA(object):
         self.quit_event.set()
         self.listen_queue.put('') # put logitical false into queue
 
+    def beamforming(self, chunks, stream2AWS=False):
+        for chunk in chunks:
+            raw_sigs = np.fromstring(chunk, dtype='int16')
+            direction = self.DOA(raw_sigs)
+            pixel_ring.set_direction(direction)
+            logger.info('@ {:.2f}, delays = {}'.format(direction, np.array(self.delays)*self.fs))
 
     def _callback(self, in_data, frame_count, time_info, status):
         """
         Pyaudio callback function
         """ 
+        # decode bytes stream 
+        mulChans = np.fromstring(in_data, dtype='int16')
+        mono     = mulChans[7::8].tostring()
+
         if self.status & UCA.detecting_mask:
             # signed 16 bits little endian
-            self.detect_queue.put(in_data)
+            self.detect_queue.put(mono)
 
         if self.status & UCA.beamforming_mask:
             raise NotImplementedError
 
         if self.status & UCA.listening_mask:
-            # decode bytes stream 
-            mulChans = np.fromstring(in_data, dtype='int16')
 
-            active = vad.is_speech(mulChans[7::8].tostring())
+            active = vad.is_speech(mono)
+
             # *************  apply beamformer  ****************
-            int_delays = (np.array(self.delays)*self.fs).astype('int32')
-            int_delays += int(np.min(int_delays))
-
-            
-            
+            # int_delays = (np.array(self.delays)*self.fs).astype('int32')
+            # int_delays += int(np.min(int_delays))
             # *************************************************
             if active:
                 if not self.active:
@@ -323,8 +322,8 @@ def task(quit_event):
         if uca.wakeup('bagel'):
             print('Wake up')
             time.sleep(1.0)
-            #data = uca.listen()
-            #playback(data)
+            chunks = uca.listen()
+            uca.beamforming(chunks, stream2AWS=True)
 
     uca.close()
          
