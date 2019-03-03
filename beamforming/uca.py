@@ -173,7 +173,7 @@ class UCA(object):
             tau[i] = gcc_phat(buf[v[0]::8], buf[v[1]::8], fs=self.fs, max_tau=self.max_delay, interp=10)
 
         # save delays for separation
-        self.delays = [0] + tau
+        # self.delays = [0] + tau
 
         # least square solution of (cos, sin)
         sol = np.linalg.pinv(self.tdoa_matrix).dot( \
@@ -181,7 +181,8 @@ class UCA(object):
 
         # found out theta
         # another 180.0 for positive value, 30.0 for respeaker architecture
-        return (math.atan2(sol[1], sol[0])/np.pi*180.0 + 210.0) % 360 
+        return ((math.atan2(sol[1], sol[0])/np.pi*180.0 + 210.0) % 360
+                , [0] + tau) 
 
     def listen(self, duration=9, timeout=3):
         vad.reset()
@@ -230,11 +231,30 @@ class UCA(object):
         self.listen_queue.put('') # put logitical false into queue
 
     def beamforming(self, chunks, stream2AWS=False):
+        delays = [0.0] * (self.num_mics-1)
+
         for chunk in chunks:
+            # decode from binary stream
             raw_sigs = np.fromstring(chunk, dtype='int16')
-            direction = self.DOA(raw_sigs)
+
+            # tdoa & doa estimation based on planar wavefront
+            direction, delays = self.DOA(raw_sigs)
+
+            # setting led && logger info
             pixel_ring.set_direction(direction)
-            logger.info('@ {:.2f}, delays = {}'.format(direction, np.array(self.delays)*self.fs))
+            logger.info('@ {:.2f}, delays = {}'.format(direction, np.array(delays)*self.fs))
+
+            # *************  apply beamformer  ****************
+            int_delays = (np.array(delays)*self.fs).astype('int32')
+            int_delays -= int(np.min(int_delays))
+            
+            # manupilate integer delays
+            for i in range(self.num_mics):
+                # padding zero in the front and back
+                pass
+            # add them together 
+
+            # *************************************************
 
     def _callback(self, in_data, frame_count, time_info, status):
         """
@@ -255,10 +275,6 @@ class UCA(object):
 
             active = vad.is_speech(mono)
 
-            # *************  apply beamformer  ****************
-            # int_delays = (np.array(self.delays)*self.fs).astype('int32')
-            # int_delays += int(np.min(int_delays))
-            # *************************************************
             if active:
                 if not self.active:
                     for d in self.listen_history:
