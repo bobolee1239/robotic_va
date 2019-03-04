@@ -32,11 +32,14 @@ from respeaker.vad import vad
 logger              = logging.getLogger('uca')
 collecting_audio    = os.getenv('COLLECTING_AUDIO', 'no') 
 
+validation = []
+origin = []
 
 class UCA(object):
     listening_mask   = (1<<0)
     detecting_mask   = (1<<1)
     beamforming_mask = (1<<2)
+    validation = []
     """
     UCA (Uniform Circular Array)
     
@@ -232,7 +235,8 @@ class UCA(object):
 
     def beamforming(self, chunks, stream2AWS=False):
         delays = [0.0] * (self.num_mics-1)
-
+      
+        
         for chunk in chunks:
             # decode from binary stream
             raw_sigs = np.fromstring(chunk, dtype='int16')
@@ -244,17 +248,25 @@ class UCA(object):
             pixel_ring.set_direction(direction)
             logger.info('@ {:.2f}, delays = {}'.format(direction, np.array(delays)*self.fs))
 
-            # *************  apply beamformer  ****************
-            int_delays = (np.array(delays)*self.fs).astype('int32')
+            # *************  apply DAS beamformer  ****************
+            int_delays = (np.array(delays)*self.fs).astype('int16')
             int_delays -= int(np.min(int_delays))
-            
+            max_delays = np.max(int_delays);
+
+            toAdd = np.zeros((raw_sigs.size//8 + max_delays, 
+                              self.num_mics), dtype='int16')
             # manupilate integer delays
             for i in range(self.num_mics):
                 # padding zero in the front and back
-                pass
+                toAdd[:, i] = np.concatenate((np.zeros(int_delays[i], dtype='int16'),
+                                               raw_sigs[i+1::8], 
+                                               np.zeros(max_delays-int_delays[i], dtype='int16')), 
+                                              axis=0)
             # add them together 
-
+            enhanced_speech = np.sum(toAdd, axis=1)
             # *************************************************
+            validation.append(enhanced_speech / 6.0)
+            origin.append(toAdd[:, 0])
 
     def _callback(self, in_data, frame_count, time_info, status):
         """
