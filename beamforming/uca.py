@@ -243,7 +243,7 @@ class UCA(object):
 
             # setting led && logger info
             pixel_ring.set_direction(direction)
-            logger.info('@ {:.2f}, delays = {}'.format(direction, np.array(delays)*self.fs))
+            logger.debug('@ {:.2f}, delays = {}'.format(direction, np.array(delays)*self.fs))
 
             # *************  apply DAS beamformer  ****************
             int_delays = (np.array(delays)*self.fs).astype('int16')

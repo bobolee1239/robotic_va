@@ -24,7 +24,7 @@ if __name__ == '__main__':
     isFailed = False
     while not q.is_set():
         try:
-            if uca.wakeup('respeaker'):
+            if uca.wakeup('amber'):
                 print('Wake up')
                 time.sleep(1.0)
                 chunks = uca.listen()
@@ -51,6 +51,7 @@ if __name__ == '__main__':
 
                 # Print Message
                 sd.play(content, 16000)
+                print('\n-------------------')
                 print(response["message"])
                 
                 if isFailed: break
