@@ -16,9 +16,9 @@ import numpy as np
 import pyaudio
 import os
 import logging
-from gcc_phat import gcc_phat
+from .gcc_phat import gcc_phat
 import math
-from pixel_ring import pixel_ring
+from .pixel_ring import pixel_ring
 
 try:
     # python2 supporting
@@ -32,13 +32,10 @@ from respeaker.vad import vad
 logger              = logging.getLogger('uca')
 collecting_audio    = os.getenv('COLLECTING_AUDIO', 'no') 
 
-validation = []
-origin = []
 
 class UCA(object):
     listening_mask   = (1<<0)
     detecting_mask   = (1<<1)
-    beamforming_mask = (1<<2)
     validation = []
     """
     UCA (Uniform Circular Array)
@@ -233,10 +230,10 @@ class UCA(object):
         self.quit_event.set()
         self.listen_queue.put('') # put logitical false into queue
 
-    def beamforming(self, chunks, stream2AWS=False):
+    def beamforming(self, chunks):
         delays = [0.0] * (self.num_mics-1)
       
-        
+        enhanced_speech = [] 
         for chunk in chunks:
             # decode from binary stream
             raw_sigs = np.fromstring(chunk, dtype='int16')
@@ -257,16 +254,17 @@ class UCA(object):
                               self.num_mics), dtype='int16')
             # manupilate integer delays
             for i in range(self.num_mics):
-                # padding zero in the front and back
+                # 1. Padding zero in the front and back
+                # 2. shift 2 bits (devide by 4)
                 toAdd[:, i] = np.concatenate((np.zeros(int_delays[i], dtype='int16'),
-                                               raw_sigs[i+1::8], 
+                                               raw_sigs[i+1::8] >> 2, 
                                                np.zeros(max_delays-int_delays[i], dtype='int16')), 
                                               axis=0)
             # add them together 
-            enhanced_speech = np.sum(toAdd, axis=1)
+            enhanced_speech.append(np.sum(toAdd, axis=1, dtype='int16'))
             # *************************************************
-            validation.append(enhanced_speech / 6.0)
-            origin.append(toAdd[:, 0])
+
+        return np.concatenate(enhanced_speech, axis=0)
 
     def _callback(self, in_data, frame_count, time_info, status):
         """
@@ -279,9 +277,6 @@ class UCA(object):
         if self.status & UCA.detecting_mask:
             # signed 16 bits little endian
             self.detect_queue.put(mono)
-
-        if self.status & UCA.beamforming_mask:
-            raise NotImplementedError
 
         if self.status & UCA.listening_mask:
 
@@ -351,7 +346,7 @@ def task(quit_event):
             print('Wake up')
             time.sleep(1.0)
             chunks = uca.listen()
-            uca.beamforming(chunks, stream2AWS=True)
+            uca.beamforming(chunks)
 
     uca.close()
          
