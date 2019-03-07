@@ -24,16 +24,15 @@ if __name__ == '__main__':
     isFailed = False
     while not q.is_set():
         try:
-            if uca.wakeup('amber'):
+            if uca.wakeup('hello amber'):
                 print('Wake up')
-                time.sleep(1.0)
                 chunks = uca.listen()
                 enhanced = uca.beamforming(chunks)
 
                 response = lex_client.post_content(
                     botName = "musicBot", 
                     botAlias = "songRequestor",
-                    userId = "brian", 
+                    userId = "bobolee", 
                     sessionAttributes = {
                     
                     }, 
@@ -45,12 +44,17 @@ if __name__ == '__main__':
                 )
 
                 if response["dialogState"] == 'ReadyForFulfillment': break
+                if response["dialogState"] == 'Fulfilled': break
                 elif response["dialogState"] == "Failed": isFailed = True
 
                 content = np.fromstring(response["audioStream"].read(), dtype="<i2")
 
+                # Print request
+                sd.play(enhanced / 2**14, 16000)
+                time.sleep(3.0)
+
                 # Print Message
-                sd.play(content, 16000)
+                sd.play(content / np.max(content), 16000)
                 print('\n-------------------')
                 print(response["message"])
                 
@@ -62,6 +66,11 @@ if __name__ == '__main__':
     uca.close()
 
     if not isFailed:
+        content = np.fromstring(response["audioStream"].read(), dtype="<i2")
+        sd.play(content / np.max(content), 16000)
+        print('\n-------------------')
+        print(response["message"])
+        
         print("\n///// Request Information ///// ")
         for keys in response["slots"].keys():
             print("  * " + keys + ": " + response["slots"][keys])
