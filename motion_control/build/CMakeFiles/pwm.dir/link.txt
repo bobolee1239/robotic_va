@@ -1,0 +1,1 @@
+/usr/bin/c++      CMakeFiles/pwm.dir/src/pwm.cpp.o  -o pwm -rdynamic -lwiringPi 
