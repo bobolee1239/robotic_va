@@ -4,11 +4,17 @@
  ** AUTHOR  : Tsung-Han Lee
  **************************************/
 
+#include <wiringPi.h>
 #include "hall_sensor_decode.h"
 
-WheelState_t* const leftWheel, rightWheel;
+WheelState_t* const leftWheel = new WheelState_t();
+WheelState_t* const rightWheel = new WheelState_t();
+
+*leftWheel = {0, false, 0, 0, 0, 0};
+*rightWheel = {0, false, 0, 0, 0, 0};
 
 void hallSensor_ISR(void) {
+    /* Dealing with left motor */
     /* read state of GPIO pin */
     leftWheel->hallA = digitalRead(LEFT_HALL_A);
     leftWheel->hallB = digitalRead(LEFT_HALL_B);
@@ -22,7 +28,7 @@ void hallSensor_ISR(void) {
         if (leftWheel->prestate == 4) {
             leftWheel->direction = true;
         } else if (leftWheel->prestate != 1) {
-            leftwheel->direction = false;
+            leftWheel->direction = false;
         }
     } else if (leftWheel->state == 4) {
         if (leftWheel->prestate == 1) {
@@ -34,5 +40,53 @@ void hallSensor_ISR(void) {
         leftWheel->direction = (leftWheel->state > leftWheel->prestate);
     }
 
-    /* TODO ..do nothing if state ain't change */
+    /* do nothing if state ain't change */
+    if (leftWheel->prestate != leftWheel->state) {
+        if (leftWheel->direction) {
+            ++leftWheel->numStateChange;
+        } else {
+            --leftWheel->numStateChange;
+        }
+    }
+
+    /* update previous state */
+    leftWheel->prestate = leftWheel->state;
+
+    /* Dealing with right motor */
+    /* read state of GPIO pin */
+    rightWheel->hallA = digitalRead(RIGHT_HALL_A);
+    rightWheel->hallB = digitalRead(RIGHT_HALL_B);
+
+    /* hallA hallB should be 1, 0 */
+    rightWheel->state = (rightWheel->hallA << 2)
+                        + (rightWheel->hallA ^ rightWheel->hallB)
+                        + 1;
+
+    if (rightWheel->state == 1) {
+        if (rightWheel->prestate == 4) {
+            rightWheel->direction = true;
+        } else if (rightWheel->prestate != 1) {
+            rightWheel->direction = false;
+        }
+    } else if (rightWheel->state == 4) {
+        if (rightWheel->prestate == 1) {
+            rightWheel->direction = false;
+        } else if (rightWheel->prestate != 4) {
+            rightWheel->direction = true;
+        }
+    } else {
+        rightWheel->direction = (rightWheel->state > rightWheel->prestate);
+    }
+
+    /* do nothing if state ain't change */
+    if (rightWheel->prestate != rightWheel->state) {
+        if (rightWheel->direction) {
+            ++rightWheel->numStateChange;
+        } else {
+            --rightWheel->numStateChange;
+        }
+    }
+
+    /* update previous state */
+    rightWheel->prestate = rightWheel->state;
 }
