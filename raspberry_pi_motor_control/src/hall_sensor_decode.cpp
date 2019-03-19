@@ -3,14 +3,12 @@
  ** FILE    : hall_sensor_decode.cpp
  ** AUTHOR  : Tsung-Han Lee
  **************************************/
-
-#include <wiringPi.h>
 #include "hall_sensor_decode.h"
 
 WheelState_t* const leftWheel = new WheelState_t();
 WheelState_t* const rightWheel = new WheelState_t();
 
-*leftWheel = {0, false, 0, 0, 0, 0};
+*leftWheel  = {0, false, 0, 0, 0, 0};
 *rightWheel = {0, false, 0, 0, 0, 0};
 
 void hallSensor_ISR(void) {
