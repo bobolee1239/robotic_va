@@ -68,6 +68,7 @@ int main(int argc, char* argv[]) {
         usleep(10000);
     }
 
+    /* release memory */
     closeHallSensor();
     return 0;
 }

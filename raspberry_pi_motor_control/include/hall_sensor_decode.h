@@ -13,12 +13,6 @@
 #define LEFT_HALL_B     2
 #define RIGHT_HALL_A    3
 #define RIGHT_HALL_B    4
-/*
-extern int LEFT_HALL_A;
-extern int LEFT_HALL_B;
-extern int RIGHT_HALL_A;
-extern int RIGHT_HALL_B;
-*/
 
 /********************************************************
  *  WheelState should be defined as volatile since it
@@ -32,7 +26,8 @@ typedef volatile struct WheelState {
     volatile int hallA;
     volatile int hallB;
 
-    WheelState () {
+    /* constructor for structure */
+    WheelState() {
         numStateChange  = 0;
         direction       = false;
         state           = 0;
@@ -48,4 +43,4 @@ void closeHallSensor();
 WheelState_t* const leftWheel = new WheelState_t();
 WheelState_t* const rightWheel = new WheelState_t();
 
-#endif  //
+#endif  // HALL_SENSOR_DECODE_H_

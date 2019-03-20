@@ -13,8 +13,27 @@ void hallSensor_ISR(void) {
     leftWheel->hallA = digitalRead(LEFT_HALL_A);
     leftWheel->hallB = digitalRead(LEFT_HALL_B);
 
-    /* hallA hallB should be 1, 0 */
-    leftWheel->state = (leftWheel->hallA << 2)
+    /***********************************************************
+     **   I. hallA hallB should be 1, 0 => bitwise xor is fine
+     **  II. update state and check if:
+     **        1. state increase (direction = forward)
+     **        2. state decrease (direction = backward)
+     **        3. same state     (nothing happened)
+     **
+     **  [HALL SENSOR TABLE] :
+     **         * FORWARD   : from up to down
+     **         * BACKWARD  : from down to up
+     **   ---------------------------
+     **   | STATE | HALL A | HALL B |
+     **   |   1   |   0    |   0    |
+     **   |   2   |   0    |   1    |
+     **   |   3   |   1    |   1    |
+     **   |   4   |   1    |   0    |
+     **   |   1   |   0    |   0    |
+     **   ---------------------------
+     ***********************************************************/
+    // update state in [1, 2, 3, 4]
+    leftWheel->state = (leftWheel->hallA << 1)
                         + (leftWheel->hallA ^ leftWheel->hallB)
                         + 1;
 
@@ -85,7 +104,7 @@ void hallSensor_ISR(void) {
     rightWheel->prestate = rightWheel->state;
 }
 
-void closeHallSensor(){
+void closeHallSensor() {
     delete rightWheel;
     delete leftWheel;
 }
