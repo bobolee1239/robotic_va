@@ -4,8 +4,8 @@
  ** AUTHOR  : Tsung-Han Lee
  **************************************/
 #include "hall_sensor_decode.h"
-#include <string.h>
 
+#include <iostream> // DEBUG 
 
 void hallSensor_ISR(void) {
     /* Dealing with left motor */
@@ -56,10 +56,13 @@ void hallSensor_ISR(void) {
     /* do nothing if state ain't change */
     if (leftWheel->prestate != leftWheel->state) {
         if (leftWheel->direction) {
-            ++leftWheel->numStateChange;
+            ++(leftWheel->numStateChange);
         } else {
-            --leftWheel->numStateChange;
+            --(leftWheel->numStateChange);
         }
+        //  DEBUG
+        //  std::cout << leftWheel->prestate << " -> " << leftWheel->state << std::endl;
+        std::cout << leftWheel->numStateChange << std::endl;
     }
 
     /* update previous state */

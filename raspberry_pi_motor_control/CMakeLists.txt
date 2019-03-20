@@ -4,8 +4,11 @@ project(RPi_Motor_Control)
 add_definitions(-std=c++11 -lwiringPi -lpthread)
 include_directories(include)
 
-file(GLOB SRC src/*)
+set(MOTOR_CONTROL src/motorControl.cpp)
+set(TEST_RPM src/test.cpp)
 
-message(${SRC})
-add_executable(motor_control ${SRC})
+add_executable(motor_control ${MOTOR_CONTROL})
 target_link_libraries(motor_control wiringPi)
+
+add_executable(test_rpm ${TEST_RPM})
+target_link_libraries(test_rpm wiringPi)

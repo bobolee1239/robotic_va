@@ -1,6 +1,6 @@
 // Copyright 2019 Tsung-Han Lee
 /**************************************
- ** FILE    : motorControl.cpp
+ ** FILE    : complete.cpp
  ** AUTHOR  : Tsung-Han Lee
  **************************************/
 
@@ -32,15 +32,15 @@ typedef volatile struct PIController {
 /***********************************************************************/
 
 /********************* PARAMETERS ***************************************/
-const int leftPWM   = 23;      // GPIO 1 for wiringPi = GPIO 18 for BCM
-const int rightPWM  = 1;    // GPIO 23 for wiringPi = GPIO 13 for BCM
-const int rightPWMn = 26;   // GPIO 24 for wiringPi  = GPIO 19 for BCM
-const int leftPWMn  = 24;  // GPIO 26 for wiringPi   = GPIO 12 for BCM
+const int leftPWM   = 1;      // GPIO 1 for wiringPi = GPIO 18 for BCM
+const int rightPWM  = 23;    // GPIO 23 for wiringPi = GPIO 13 for BCM
+const int rightPWMn = 24;   // GPIO 24 for wiringPi  = GPIO 19 for BCM
+const int leftPWMn  = 26;  // GPIO 26 for wiringPi   = GPIO 12 for BCM
 
 PIController_t leftController  = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 PIController_t rightController = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 
-double leftRef  = -25.0;
+double leftRef  = 25.0;
 double rightRef = 25.0;
 double Ts       = 0.01;       // sampling interval
 
@@ -63,11 +63,12 @@ int main(int argc, char* argv[]) {
 
     while (1) {
         /* output sensor */
+        /*
         std::cout << "l:" << std::fixed << std::setprecision(2)
                   << leftController.rpm << " , ";
         std::cout << "r:" << std::fixed << std::setprecision(2)
                   << rightController.rpm << std::endl;
-
+        */
         sleep(1);
     }
 
@@ -80,15 +81,16 @@ void timerISR(int signum) {
     /*********** MOTOR1 **********/
     // measure TODO... translate rpm correctly : gear ratio
     leftController.rpm = leftWheel->numStateChange * 1.04166;
+    // DEBUG
+    std::cout << std::fixed << std::setprecision(2)
+              << leftController.rpm << std::endl;
+    std::cout << "#change: " << leftWheel->numStateChange << std::endl;
+
     leftWheel->numStateChange = 0;
 
     /**************** PI Controller *******************/
     leftController.err = leftRef - leftController.rpm;
     leftController.ierr += Ts*leftController.err;
-
-    std::cout << "err: " << leftController.err << std::endl;
-    std::cout << "kp: " << leftController.kp
-              << ", ki: " << leftController.ki << std::endl;
 
     // limit integration output
     if (leftController.ierr > 50.0) {
@@ -98,7 +100,6 @@ void timerISR(int signum) {
     }
     leftController.piOut = leftController.kp * leftController.err
                            + leftController.ki * leftController.ierr;
-    leftController.piOut *= -1;
     // saturation
     if (leftController.piOut > 0.5) {
         leftController.piOut = 0.5;
@@ -198,4 +199,109 @@ int initPWM() {
     pwmWrite(rightPWM, static_cast<int>(1024*0.5));
 
     return 0;
+}
+
+void hallSensor_ISR(void) {
+    /* Dealing with left motor */
+    /* read state of GPIO pin */
+    leftWheel->hallA = digitalRead(LEFT_HALL_A);
+    leftWheel->hallB = digitalRead(LEFT_HALL_B);
+
+    /***********************************************************
+     **   I. hallA hallB should be 1, 0 => bitwise xor is fine
+     **  II. update state and check if:
+     **        1. state increase (direction = forward)
+     **        2. state decrease (direction = backward)
+     **        3. same state     (nothing happened)
+     **
+     **  [HALL SENSOR TABLE] :
+     **         * FORWARD   : from up to down
+     **         * BACKWARD  : from down to up
+     **   ---------------------------
+     **   | STATE | HALL A | HALL B |
+     **   |   1   |   0    |   0    |
+     **   |   2   |   0    |   1    |
+     **   |   3   |   1    |   1    |
+     **   |   4   |   1    |   0    |
+     **   |   1   |   0    |   0    |
+     **   ---------------------------
+     ***********************************************************/
+    // update state in [1, 2, 3, 4]
+    leftWheel->state = (leftWheel->hallA << 1)
+                        + (leftWheel->hallA ^ leftWheel->hallB)
+                        + 1;
+
+    if (leftWheel->state == 1) {
+        if (leftWheel->prestate == 4) {
+            leftWheel->direction = true;
+        } else if (leftWheel->prestate != 1) {
+            leftWheel->direction = false;
+        }
+    } else if (leftWheel->state == 4) {
+        if (leftWheel->prestate == 1) {
+            leftWheel->direction = false;
+        } else if (leftWheel->prestate != 4) {
+            leftWheel->direction = true;
+        }
+    } else {
+        leftWheel->direction = (leftWheel->state > leftWheel->prestate);
+    }
+
+    /* do nothing if state ain't change */
+    if (leftWheel->prestate != leftWheel->state) {
+        if (leftWheel->direction) {
+            ++(leftWheel->numStateChange);
+        } else {
+            --(leftWheel->numStateChange);
+        }
+        //  DEBUG
+        //  std::cout << leftWheel->prestate << " -> " << leftWheel->state << std::endl;
+        std::cout << leftWheel->numStateChange << std::endl;
+    }
+
+    /* update previous state */
+    leftWheel->prestate = leftWheel->state;
+
+    /* Dealing with right motor */
+    /* read state of GPIO pin */
+    rightWheel->hallA = digitalRead(RIGHT_HALL_A);
+    rightWheel->hallB = digitalRead(RIGHT_HALL_B);
+
+    /* hallA hallB should be 1, 0 */
+    rightWheel->state = (rightWheel->hallA << 2)
+                        + (rightWheel->hallA ^ rightWheel->hallB)
+                        + 1;
+
+    if (rightWheel->state == 1) {
+        if (rightWheel->prestate == 4) {
+            rightWheel->direction = true;
+        } else if (rightWheel->prestate != 1) {
+            rightWheel->direction = false;
+        }
+    } else if (rightWheel->state == 4) {
+        if (rightWheel->prestate == 1) {
+            rightWheel->direction = false;
+        } else if (rightWheel->prestate != 4) {
+            rightWheel->direction = true;
+        }
+    } else {
+        rightWheel->direction = (rightWheel->state > rightWheel->prestate);
+    }
+
+    /* do nothing if state ain't change */
+    if (rightWheel->prestate != rightWheel->state) {
+        if (rightWheel->direction) {
+            ++rightWheel->numStateChange;
+        } else {
+            --rightWheel->numStateChange;
+        }
+    }
+
+    /* update previous state */
+    rightWheel->prestate = rightWheel->state;
+}
+
+void closeHallSensor() {
+    delete rightWheel;
+    delete leftWheel;
 }

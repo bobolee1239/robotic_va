@@ -32,15 +32,15 @@ typedef volatile struct PIController {
 /***********************************************************************/
 
 /********************* PARAMETERS ***************************************/
-const int leftPWM   = 23;      // GPIO 1 for wiringPi = GPIO 18 for BCM
-const int rightPWM  = 1;    // GPIO 23 for wiringPi = GPIO 13 for BCM
-const int rightPWMn = 26;   // GPIO 24 for wiringPi  = GPIO 19 for BCM
-const int leftPWMn  = 24;  // GPIO 26 for wiringPi   = GPIO 12 for BCM
+const int leftPWM   = 1;      // GPIO 1 for wiringPi = GPIO 18 for BCM
+const int rightPWM  = 23;    // GPIO 23 for wiringPi = GPIO 13 for BCM
+const int rightPWMn = 24;   // GPIO 24 for wiringPi  = GPIO 19 for BCM
+const int leftPWMn  = 26;  // GPIO 26 for wiringPi   = GPIO 12 for BCM
 
 PIController_t leftController  = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 PIController_t rightController = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 
-double leftRef  = -25.0;
+double leftRef  = 25.0;
 double rightRef = 25.0;
 double Ts       = 0.01;       // sampling interval
 
@@ -58,19 +58,22 @@ int main(int argc, char* argv[]) {
         std::cerr << "Init hall sensors failed!" << std::endl;
     }
 
-    initPWM();
+
+    double d1, d2;
+    std::cout << "input d1, d2: ";
+    std::cin >> d1 >> d2;
+    pwmWrite(leftPWM, static_cast<int>(1024*d1));
+    pwmWrite(rightPWM, static_cast<int>(1024*d2));
+
     initTimerISR();
 
+    /* output sensor */
+    
     while (1) {
-        /* output sensor */
-        std::cout << "l:" << std::fixed << std::setprecision(2)
-                  << leftController.rpm << " , ";
-        std::cout << "r:" << std::fixed << std::setprecision(2)
-                  << rightController.rpm << std::endl;
-
         sleep(1);
     }
 
+    initPWM();
     /* release memory */
     closeHallSensor();
     return 0;
@@ -80,34 +83,14 @@ void timerISR(int signum) {
     /*********** MOTOR1 **********/
     // measure TODO... translate rpm correctly : gear ratio
     leftController.rpm = leftWheel->numStateChange * 1.04166;
+    std::cout << "l:" << std::fixed << std::setprecision(2)
+                  << leftController.rpm << std::endl;
     leftWheel->numStateChange = 0;
 
     /**************** PI Controller *******************/
     leftController.err = leftRef - leftController.rpm;
     leftController.ierr += Ts*leftController.err;
 
-    std::cout << "err: " << leftController.err << std::endl;
-    std::cout << "kp: " << leftController.kp
-              << ", ki: " << leftController.ki << std::endl;
-
-    // limit integration output
-    if (leftController.ierr > 50.0) {
-        leftController.ierr = 50.0;
-    } else if (leftController.ierr < -50.0) {
-        leftController.ierr = -50.0;
-    }
-    leftController.piOut = leftController.kp * leftController.err
-                           + leftController.ki * leftController.ierr;
-    leftController.piOut *= -1;
-    // saturation
-    if (leftController.piOut > 0.5) {
-        leftController.piOut = 0.5;
-    } else if (leftController.piOut < -0.5) {
-        leftController.piOut = -0.5;
-    }
-    // output to acuator : complement PWM
-    pwmWrite(leftPWM, static_cast<int>(1024*(0.5 + leftController.piOut)));
-    /**************************************************/
     /*********** MOTOR2 **********/
     // measure TODO... translate rpm correctly : gear ratio
     rightController.rpm = rightWheel->numStateChange * 1.04166;
@@ -116,24 +99,6 @@ void timerISR(int signum) {
     /**************** PI Controller *******************/
     rightController.err = rightRef - rightController.rpm;
     rightController.ierr += Ts*rightController.err;
-
-    // limit integration output
-    if (rightController.ierr > 50.0) {
-        rightController.ierr = 50.0;
-    } else if (rightController.ierr < -50.0) {
-        rightController.ierr = -50.0;
-    }
-    rightController.piOut = rightController.kp * rightController.err
-                           + rightController.ki * rightController.ierr;
-    // saturation
-    if (rightController.piOut > 0.5) {
-        rightController.piOut = 0.5;
-    } else if (rightController.piOut < -0.5) {
-        rightController.piOut = -0.5;
-    }
-    // output to acuator : complement PWM
-    pwmWrite(rightPWM, static_cast<int>(1024*(0.5 + rightController.piOut)));
-    /**************************************************/
 }
 
 int initTimerISR() {
