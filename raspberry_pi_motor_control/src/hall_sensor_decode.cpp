@@ -8,8 +8,8 @@
 WheelState_t* const leftWheel = new WheelState_t();
 WheelState_t* const rightWheel = new WheelState_t();
 
-*leftWheel  = {0, false, 0, 0, 0, 0};
-*rightWheel = {0, false, 0, 0, 0, 0};
+memset((void*)leftWheel, 0, sizof(WheelState_t));
+memset((void*)rightWheel, 0, sizeof(WheelState_t));
 
 void hallSensor_ISR(void) {
     /* Dealing with left motor */
