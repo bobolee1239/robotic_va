@@ -4,12 +4,8 @@
  ** AUTHOR  : Tsung-Han Lee
  **************************************/
 #include "hall_sensor_decode.h"
+#include <string.h>
 
-WheelState_t* const leftWheel = new WheelState_t();
-WheelState_t* const rightWheel = new WheelState_t();
-
-memset((void*)leftWheel, 0, sizof(WheelState_t));
-memset((void*)rightWheel, 0, sizeof(WheelState_t));
 
 void hallSensor_ISR(void) {
     /* Dealing with left motor */
@@ -87,4 +83,9 @@ void hallSensor_ISR(void) {
 
     /* update previous state */
     rightWheel->prestate = rightWheel->state;
+}
+
+void closeHallSensor(){
+    delete rightWheel;
+    delete leftWheel;
 }

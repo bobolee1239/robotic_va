@@ -31,9 +31,21 @@ typedef volatile struct WheelState {
     volatile unsigned short prestate;
     volatile int hallA;
     volatile int hallB;
+
+    WheelState () {
+        numStateChange  = 0;
+        direction       = false;
+        state           = 0;
+        prestate        = 0;
+        hallA           = 0;
+        hallB           = 0;
+    }
 } WheelState_t;
 
 
 void hallSensor_ISR(void);
+void closeHallSensor();
+WheelState_t* const leftWheel = new WheelState_t();
+WheelState_t* const rightWheel = new WheelState_t();
 
 #endif  //

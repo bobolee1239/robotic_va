@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <iostream>
+#include <iomanip>
 
 #include "hall_sensor_decode.h"
 
@@ -41,6 +42,7 @@ PIController_t rightController = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 double leftRef  = 25.0;
 double rightRef = 25.0;
 double Ts       = 0.01;       // sampling interval
+
 /***********************************************************************/
 
 int main(int argc, char* argv[]) {
@@ -60,12 +62,13 @@ int main(int argc, char* argv[]) {
     while (1) {
         /* output sensor */
         std::cout << "l:" << std::fixed << std::setprecision(2)
-                  << leftController.rpm << std::endl;
-        std::cout << "l:" << std::fixed << std::setprecision(2)
+                  << leftController.rpm << " , ";
+        std::cout << "r:" << std::fixed << std::setprecision(2)
                   << rightController.rpm << std::endl;
         usleep(10000);
     }
 
+    closeHallSensor();
     return 0;
 }
 
