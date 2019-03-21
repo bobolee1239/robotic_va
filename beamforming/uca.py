@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
 #
-## ******************************
-##  AUTHOR: Brian Lee 
+## Copyright 2019 Tsung-Han Brian Lee, Shincheng Huang
+## *****************************************************
+##  AUTHOR: Tsung-Han Brian Lee,
+##			Shincheng Huang
 ##  DATE  : 12th Feb, 2019
 ##
-## ******************************
+## *****************************************************
 ##  FILE        : uca.py 
 ##  DESCRIPTION : 
 ##                  
@@ -37,12 +40,12 @@ class UCA(object):
     listening_mask   = (1<<0)
     detecting_mask   = (1<<1)
     validation = []
+    SOUND_SPEED = 343.2
     """
     UCA (Uniform Circular Array)
     
     Design Based on Respeaker 7 mics array architecture
     """
-    SOUND_SPEED = 343.2
     def __init__(self, fs=16000, nframes=2000, radius=0.032, num_mics=6, quit_event=None, name='respeaker-7'):
         self.radius     = radius 
         self.fs         = fs
@@ -237,7 +240,11 @@ class UCA(object):
         for chunk in chunks:
             # decode from binary stream
             raw_sigs = np.fromstring(chunk, dtype='int16')
+			# casting int16 to double floating number 
+			raw_sigs = raw_sigs / (2**15)
 
+			## TODO... expand gcc_phat and DOA function in following
+			
             # tdoa & doa estimation based on planar wavefront
             direction, delays = self.DOA(raw_sigs)
 
@@ -245,21 +252,25 @@ class UCA(object):
             pixel_ring.set_direction(direction)
             logger.debug('@ {:.2f}, delays = {}'.format(direction, np.array(delays)*self.fs))
 
-            # *************  apply DAS beamformer  ****************
-            int_delays = (np.array(delays)*self.fs).astype('int16')
-            int_delays -= int(np.min(int_delays))
-            max_delays = np.max(int_delays);
+			## TODO...
+            ## *************  apply MVDR beamformer  ****************
+			
+            ## # *************  apply DAS beamformer  ****************
+            ## int_delays = (np.array(delays)*self.fs).astype('int16')
+            ## int_delays -= int(np.min(int_delays))
+            ## max_delays = np.max(int_delays);
 
-            toAdd = np.zeros((raw_sigs.size//8 + max_delays, 
-                              self.num_mics), dtype='int16')
-            # manupilate integer delays
-            for i in range(self.num_mics):
-                # 1. Padding zero in the front and back
-                # 2. shift 2 bits (devide by 4)
-                toAdd[:, i] = np.concatenate((np.zeros(int_delays[i], dtype='int16'),
-                                               raw_sigs[i+1::8] >> 2, 
-                                               np.zeros(max_delays-int_delays[i], dtype='int16')), 
-                                              axis=0)
+            ## toAdd = np.zeros((raw_sigs.size//8 + max_delays, 
+            ##                   self.num_mics), dtype='int16')
+            ## # manupilate integer delays
+            ## for i in range(self.num_mics):
+            ##     # 1. Padding zero in the front and back
+            ##     # 2. shift 2 bits (devide by 4)
+            ##     toAdd[:, i] = np.concatenate((np.zeros(int_delays[i], dtype='int16'),
+            ##                                    raw_sigs[i+1::8] >> 2, 
+            ##                                    np.zeros(max_delays-int_delays[i], dtype='int16')), 
+            ##                                   axis=0)
+
             # add them together 
             enhanced_speech.append(np.sum(toAdd, axis=1, dtype='int16'))
             # *************************************************
