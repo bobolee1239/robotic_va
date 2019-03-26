@@ -244,7 +244,7 @@ class UCA(object):
 
         enhanced_speech = []
         # DEBUG
-        originals       = []
+        # originals       = []
         for chunk in chunks:
             # decode from binary stream
             raw_sigs = np.fromstring(chunk, dtype='int16')
@@ -253,7 +253,7 @@ class UCA(object):
             raw_sigs = raw_sigs / (2**15)
 
             # DEBUG
-            originals.append(raw_sigs[1::8])
+            # originals.append(raw_sigs[1::8])
 
             # tdoa & doa estimation based on planar wavefront
             #direction, delays = self.DOA(raw_sigs)
@@ -368,9 +368,9 @@ class UCA(object):
             ## enhanced_speech.append(np.sum(toAdd, axis=1, dtype='int16'))
             ## # *************************************************
 
-        # return np.concatenate(enhanced_speech, axis=0)
+        return np.concatenate(enhanced_speech, axis=0)
         # DEBUG
-        return (np.concatenate(enhanced_speech, axis=0), np.concatenate(originals, axis=0))
+        # return (np.concatenate(enhanced_speech, axis=0), np.concatenate(originals, axis=0))
 
     def _callback(self, in_data, frame_count, time_info, status):
         """
@@ -444,7 +444,7 @@ class UCA(object):
 def task(quit_event):
     import time
     # DEBUG
-    from scipy.io.wavfile import write
+    # from scipy.io.wavfile import write
 
     uca = UCA(fs=16000, nframes=2000, radius=0.032, num_mics=6, \
                 quit_event=quit_event, name='respeaker-7')
@@ -453,22 +453,20 @@ def task(quit_event):
         if uca.wakeup('bagel'):
             print('Wake up')
             chunks = uca.listen()
-            # enhanced = uca.beamforming(chunks)
+            enhanced = uca.beamforming(chunks)
             # DEBUG
-            enhanced, originals = uca.beamforming(chunks)
-
-            # DEBUG
-            sd.play(originals / np.max(originals), 16000)
-            time.sleep(10.0)
-
-            sd.play(enhanced / np.max(enhanced), 16000)
-            time.sleep(10.0)
+            # enhanced, originals = uca.beamforming(chunks)
 
             # DEBUG
-            write('assets/wav/originals.wav', 16000, np.int16(originals / np.max(originals) * 32768.0))
-            write('assets/wav/enhanced.wav', 16000, np.int16(enhanced / np.max(enhanced) * 32768.0))
+            # sd.play(originals / np.max(originals), 16000)
+            # time.sleep(10.0)
 
+            # sd.play(enhanced / np.max(enhanced), 16000)
+            # time.sleep(10.0)
 
+            # DEBUG
+            # write('assets/wav/originals.wav', 16000, np.int16(originals / np.max(originals) * 32768.0))
+            # write('assets/wav/enhanced.wav', 16000, np.int16(enhanced / np.max(enhanced) * 32768.0))
     uca.close()
 
 def main():
