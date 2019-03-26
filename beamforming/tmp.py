@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 #
 ## Copyright 2019 Tsung-Han Brian Lee, Shincheng Huang
@@ -112,6 +113,20 @@ class UCA(object):
         self.tdoa_measures  = np.ones(((len(mic_theta)-1, ))) \
                                 * UCA.SOUND_SPEED / (self.radius)       # diameter => radius
 #################### wired #######################################
+        df = self.fs / self.nframes / 2                # frequency domain resolution
+        frq = np.arange(0, (self.fs/2) , df)        # freqeuncy axis
+        k = 2*np.pi * frq / UCA.SOUND_SPEED         # wave number
+        # create Rxx placeholder
+        self.Rxx = np.zeros((6,6,len(frq))
+        # UCA geometry
+        mic_theta = np.arange(np.pi/6, 2*np.pi, np.pi/3)
+        GD_matrix = np.ones((3,6))*np.array([np.cos(mic_theta), np.sin(mic_theta), np.zeros(6)] ) # 3 x 6
+	    # 6 microphones
+        for i in range(1, 7):
+            for j in range(1,7):
+                # modify sum(..., 2) -> sum(...)
+                s_Rxx = np.abs(sum(GD_matrix[:,i-1]-GD_matrix[:,j-1]))/np.pi * k
+                self.Rxx[i-1][j-1][:] = np.sinc(s_Rxx)
 
     def wakeup(self, keyword=None):
         self.decoder.end_utt()
@@ -243,17 +258,15 @@ class UCA(object):
         delays = [0.0] * (self.num_mics-1)
 
         enhanced_speech = []
-        # DEBUG
-        # originals       = []
+        nCount = 0
         for chunk in chunks:
+            nCount += 1
+            if nCount < 2: continue
             # decode from binary stream
             raw_sigs = np.fromstring(chunk, dtype='int16')
 
             # casting int16 to double floating number
             raw_sigs = raw_sigs / (2**15)
-
-            # DEBUG
-            # originals.append(raw_sigs[1::8])
 
             # tdoa & doa estimation based on planar wavefront
             #direction, delays = self.DOA(raw_sigs)
@@ -269,16 +282,18 @@ class UCA(object):
             for i in range(1,7): # 1~6
                 tf_sigs[i-1] = raw_sigs[i::8]
             len_of_sig= len(tf_sigs[0])
-            n = len_of_sig*2
-            tf_sigs = np.fft.rfft(tf_sigs, n)
+            tf_sigs = np.fft.rfft(tf_sigs, 2*len_of_sig)
 
             # estimate each group of delay
             # gcc_phat
             interp = 10
             max_tau = self.max_delay
+            n = None
             for i, v in enumerate(MIC_GROUP):
+            #    print(v[1])
                 SIG = tf_sigs[v[0]-1]
                 RESIG = tf_sigs[0]
+                n = len_of_sig*2
                 R = SIG * np.conj(RESIG)
                 cc = np.fft.irfft(R / np.abs(R), n=(interp * n))
                 max_shift = int(interp * n / 2)
@@ -292,22 +307,12 @@ class UCA(object):
 
                 # least square solution of (cos, sin)
             sol = np.linalg.pinv(self.tdoa_matrix).dot( \
-                    (self.tdoa_measures * np.array(tau)).reshape(MIC_GROUP_N, 1))
-            phi_in_rad = min( sol[0] / math.cos(math.atan2(sol[1],sol[0]) ), 1)
-
-            # phi in degree
-            phi = 90 - np.rad2deg( math.asin(phi_in_rad))
+              (self.tdoa_measures * np.array(tau)).reshape(MIC_GROUP_N, 1))
+            phi_in_rad = min( sol[1] / math.sin(math.atan2(sol[1],sol[0]) ), 1 )
+            phi = 90 - np.rad2deg( math.asin(phi_in_rad) ) # phi in degree
             direction = [(math.atan2(sol[1], sol[0])/np.pi*180.0 + 210.0) % 360, phi]
 
-            # UCA geometry
-            mic_theta = np.arange(np.pi/6.0, 2.0*np.pi, np.pi/3.0)
-            # ARRAY_POS.shape = 3, 6
-            ARRAY_POS = np.ones((3,6)) * np.array([np.cos(mic_theta),       \
-                                                   np.sin(mic_theta),       \
-                                                   np.zeros(6)] )
-
-
-            # lighten led && logger info
+        # setting led && logger info
             pixel_ring.set_direction(direction[0])
             logger.debug('@ {:.2f} @ {:.2f}, delays = {}'.format(direction[0], direction[1], np.array(tau)*self.fs))
             # direction[0] is horizintal angle ; direction[1] is elevation angle
@@ -315,41 +320,34 @@ class UCA(object):
             ## TODO...
             ## *************  apply MVDR beamformer  ****************
             # frq
-            kappa = np.array([np.cos(np.deg2rad(direction[0]))*np.cos(np.deg2rad(direction[1])), \
-                              np.sin(np.deg2rad(direction[0]))*np.cos(np.deg2rad(direction[1])), \
-                              np.sin(np.deg2rad(direction[1]))] )
-            df = self.fs / float(n)                            # frequency domain resolution
-            frq = np.arange(0, self.fs/2, df)        # freqeuncy axis
+            kappa = np.array([np.cos(np.deg2rad(direction[0]))*np.sin(np.deg2rad(90-direction[1])), \
+                              np.sin(np.deg2rad(direction[0]))*np.sin(np.deg2rad(90-direction[1])),  \
+                              np.cos(np.deg2rad(90-direction[1]))] )
+            df = self.fs / n                # frequency domain resolution
+            frq = np.arange(0, (self.fs/2) , df)        # freqeuncy axis
+            k = 2*np.pi * frq / UCA.SOUND_SPEED         # wave number
 
-            k = 2*np.pi/UCA.SOUND_SPEED * frq           # wave number vector
-            # create Rxx placeholder
-            Rxx = np.zeros((6, 6, frq.size), dtype='float64')
-			# 6 microphones
-            for i in range(6):
-                for j in range(6):
-                    # modify sum(..., 2) -> sum(...)
-                    s_Rxx = np.sqrt(np.sum((ARRAY_POS[:,i-1]-ARRAY_POS[:,j-1]) ** 2)) * k / np.pi
-                    Rxx[i][j][:] = np.sinc(s_Rxx)
+            # UCA geometry
+            mic_theta = np.arange(np.pi/6, 2*np.pi, np.pi/3)
+            GD_matrix = np.ones((3,6))*np.array([np.cos(mic_theta), np.sin(mic_theta), np.zeros(6)] ) # 3 x 6
             # scan frq
-            source_half = np.zeros((frq.size,), dtype='complex_')
-            #Rxx = np.eye(6)
-            for i in range(frq.size):
+            source_half = np.zeros((len(frq),))
+            for i in range(1,len(frq)+1):
                 # apply frequency mask
                 if i*df < 500: continue
-                elif (i * df > 7000): break
+                elif (i * df > 5000):
+                    source_half[i-1] = tf_sigs[0, i-1] * 0.2
 
-                # A.shape = 1, 6 && A.dtype = complex128
-                steering_vector = np.exp(1j*np.dot(kappa,ARRAY_POS)*k[i])
-                mvdr_num        = np.dot(np.linalg.inv(Rxx[:,:,i] + (0.01*np.eye(6))),
-                                         steering_vector)
-                mvdr_weight     = mvdr_num / (np.dot(np.conj(mvdr_num.T), steering_vector))
-                # apply MVDR filter
-                source_half[i] = np.dot(np.conj(mvdr_weight.T) , tf_sigs[:,i])
+                A = np.exp(1j*np.dot(kappa.T,GD_matrix)*k[i-1]) # 1x6
+                w = np.dot(np.linalg.inv(self.Rxx[:,:,i-1] + 0.01*np.eye(6)), A)
+                W = w/(np.dot(np.conj(A.T), w))
+                #W = np.dot(np.linalg.inv(np.linalg.inv(np.dot(np.conj(A.T), w))), w)
+                source_half[i-1] = np.dot(W.T.conj() , tf_sigs[:,i-1])
 
-            enhanced_speech.append(np.fft.irfft(source_half, n=n)[:self.nframes])
+            enhanced_speech.append(np.fft.irfft(source_half, n=n))
 
             ## # *************  apply DAS beamformer  ****************
-            ## int_delays = (np.array(tau)*self.fs).astype('int16')
+            ## int_delays = (np.array(delays)*self.fs).astype('int16')
             ## int_delays -= int(np.min(int_delays))
             ## max_delays = np.max(int_delays);
 
@@ -369,8 +367,6 @@ class UCA(object):
             ## # *************************************************
 
         return np.concatenate(enhanced_speech, axis=0)
-        # DEBUG
-        # return (np.concatenate(enhanced_speech, axis=0), np.concatenate(originals, axis=0))
 
     def _callback(self, in_data, frame_count, time_info, status):
         """
@@ -443,8 +439,6 @@ class UCA(object):
 
 def task(quit_event):
     import time
-    # DEBUG
-    # from scipy.io.wavfile import write
 
     uca = UCA(fs=16000, nframes=2000, radius=0.032, num_mics=6, \
                 quit_event=quit_event, name='respeaker-7')
@@ -454,19 +448,10 @@ def task(quit_event):
             print('Wake up')
             chunks = uca.listen()
             enhanced = uca.beamforming(chunks)
-            # DEBUG
-            # enhanced, originals = uca.beamforming(chunks)
 
-            # DEBUG
-            # sd.play(originals / np.max(originals), 16000)
-            # time.sleep(10.0)
+            sd.play(enhanced, 16000)
+            time.sleep(10.0)
 
-            # sd.play(enhanced / np.max(enhanced), 16000)
-            # time.sleep(10.0)
-
-            # DEBUG
-            # write('assets/wav/originals.wav', 16000, np.int16(originals / np.max(originals) * 32768.0))
-            # write('assets/wav/enhanced.wav', 16000, np.int16(enhanced / np.max(enhanced) * 32768.0))
     uca.close()
 
 def main():
