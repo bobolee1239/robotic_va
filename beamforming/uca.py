@@ -264,18 +264,17 @@ class UCA(object):
             for i in range(1,7): # 1~6
                 tf_sigs[i-1] = raw_sigs[i::8]
             len_of_sig= len(tf_sigs[0])
-            tf_sigs = np.fft.rfft(tf_sigs, 2*len_of_sig)
+            n = len_of_sig*2
+            tf_sigs = np.fft.rfft(tf_sigs, n)
 
             # estimate each group of delay
             # gcc_phat
             interp = 10
             max_tau = self.max_delay
-            n = None
             for i, v in enumerate(MIC_GROUP):
             #    print(v[1])
                 SIG = tf_sigs[v[0]-1]
                 RESIG = tf_sigs[0]
-                n = len_of_sig*2
                 R = SIG * np.conj(RESIG)
                 cc = np.fft.irfft(R / np.abs(R), n=(interp * n))
                 max_shift = int(interp * n / 2)
@@ -290,7 +289,7 @@ class UCA(object):
                 # least square solution of (cos, sin)
             sol = np.linalg.pinv(self.tdoa_matrix).dot( \
               (self.tdoa_measures * np.array(tau)).reshape(MIC_GROUP_N, 1))
-            phi_in_rad = min( sol[1] / math.sin(math.atan2(sol[1],sol[0]) ), 1 )
+            phi_in_rad = min( sol[0] / math.cos(math.atan2(sol[1],sol[0]) ), 1 )
             phi = 90 - np.rad2deg( math.asin(phi_in_rad) ) # phi in degree
             direction = [(math.atan2(sol[1], sol[0])/np.pi*180.0 + 210.0) % 360, phi]
             # UCA geometry
@@ -306,32 +305,39 @@ class UCA(object):
             ## *************  apply MVDR beamformer  ****************
             # frq
             kappa = np.array([np.cos(np.deg2rad(direction[0]))*np.sin(np.deg2rad(90-direction[1])), \
-                              np.sin(np.deg2rad(direction[0]))*np.sin(np.deg2rad(90-direction[1])),  \
+                              np.sin(np.deg2rad(direction[0]))*np.sin(np.deg2rad(90-direction[1])), \
                               np.cos(np.deg2rad(90-direction[1]))] )
             df = self.fs / n                # frequency domain resolution
-            frq = np.arange(0, (self.fs/2) , df)        # freqeuncy axis
+            frq = np.arange(0, (self.fs/2) , df)       # freqeuncy axis
+
             k = 2*np.pi * frq / UCA.SOUND_SPEED         # wave number
             # create Rxx placeholder
-            Rxx = np.zeros((6,6,len(frq)))
-
+            Rxx = np.zeros( (6, 6, len(frq) ) )
 			# 6 microphones
             for i in range(1, 7):
                 for j in range(1,7):
                     # modify sum(..., 2) -> sum(...)
-                    s_Rxx = np.abs(sum(GD_matrix[:,i-1]-GD_matrix[:,j-1]))/np.pi * k
+                    s_Rxx = np.sqrt(np.square(np.sum(GD_matrix[:,i-1]-GD_matrix[:,j-1]))) * k / np.pi
                     Rxx[i-1][j-1][:] = np.sinc(s_Rxx)
             # scan frq
             source_half = np.zeros((len(frq),))
-            for i in range(1,len(frq)+1):
+            #Rxx = np.eye(6)
+            for i in range(0,len(frq)):
+                #print(i)
                 # apply frequency mask
-                if i*df < 500: continue
-                elif (i * df > 3500): break
+                if i*df < 1000: continue
+                elif (i * df > 3000): break
 
-                A = np.exp(1j*np.dot(kappa.T,GD_matrix)*k[i-1]) # 1x6
-                w = np.dot(np.linalg.inv(Rxx[:,:,i-1] + 0.00001*np.eye(6)), A)
-                W = w/(np.dot(np.conj(A.T), w))
+                A = np.exp(1j*np.dot(kappa,GD_matrix)*k[i]) # 1x6
+                #print(A)
+                w = np.dot(np.linalg.inv( Rxx[:,:,i] + (0.01*np.eye(6)) ), A.T)
+                #w = np.dot( np.linalg.inv(Rxx) , A )
+                #print(w)
+                #print(np.dot(np.conj(A.T), w))
+                W = w / (np.dot(np.conj(A.T), w))
+                #print(W)
                 #W = np.dot(np.linalg.inv(np.linalg.inv(np.dot(np.conj(A.T), w))), w)
-                source_half[i-1] = np.dot(W.T.conj() , tf_sigs[:,i-1])
+                source_half[i] = np.dot( np.conj(W.T) , tf_sigs[:,i])
 
             enhanced_speech.append(np.fft.irfft(source_half, n=n))
 
