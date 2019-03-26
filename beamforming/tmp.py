@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 #
 ## Copyright 2019 Tsung-Han Brian Lee, Shincheng Huang
@@ -112,6 +113,20 @@ class UCA(object):
         self.tdoa_measures  = np.ones(((len(mic_theta)-1, ))) \
                                 * UCA.SOUND_SPEED / (self.radius)       # diameter => radius
 #################### wired #######################################
+        df = self.fs / self.nframes / 2                # frequency domain resolution
+        frq = np.arange(0, (self.fs/2) , df)        # freqeuncy axis
+        k = 2*np.pi * frq / UCA.SOUND_SPEED         # wave number
+        # create Rxx placeholder
+        self.Rxx = np.zeros((6,6,len(frq))
+        # UCA geometry
+        mic_theta = np.arange(np.pi/6, 2*np.pi, np.pi/3)
+        GD_matrix = np.ones((3,6))*np.array([np.cos(mic_theta), np.sin(mic_theta), np.zeros(6)] ) # 3 x 6
+	    # 6 microphones
+        for i in range(1, 7):
+            for j in range(1,7):
+                # modify sum(..., 2) -> sum(...)
+                s_Rxx = np.abs(sum(GD_matrix[:,i-1]-GD_matrix[:,j-1]))/np.pi * k
+                self.Rxx[i-1][j-1][:] = np.sinc(s_Rxx)
 
     def wakeup(self, keyword=None):
         self.decoder.end_utt()
@@ -243,7 +258,10 @@ class UCA(object):
         delays = [0.0] * (self.num_mics-1)
 
         enhanced_speech = []
+        nCount = 0
         for chunk in chunks:
+            nCount += 1
+            if nCount < 2: continue
             # decode from binary stream
             raw_sigs = np.fromstring(chunk, dtype='int16')
 
@@ -293,9 +311,6 @@ class UCA(object):
             phi_in_rad = min( sol[1] / math.sin(math.atan2(sol[1],sol[0]) ), 1 )
             phi = 90 - np.rad2deg( math.asin(phi_in_rad) ) # phi in degree
             direction = [(math.atan2(sol[1], sol[0])/np.pi*180.0 + 210.0) % 360, phi]
-            # UCA geometry
-            mic_theta = np.arange(np.pi/6, 2*np.pi, np.pi/3)
-            GD_matrix = np.ones((3,6))*np.array([np.cos(mic_theta), np.sin(mic_theta), np.zeros(6)] ) # 3 x 6
 
         # setting led && logger info
             pixel_ring.set_direction(direction[0])
@@ -311,24 +326,20 @@ class UCA(object):
             df = self.fs / n                # frequency domain resolution
             frq = np.arange(0, (self.fs/2) , df)        # freqeuncy axis
             k = 2*np.pi * frq / UCA.SOUND_SPEED         # wave number
-            # create Rxx placeholder
-            Rxx = np.zeros((6,6,len(frq)))
 
-			# 6 microphones
-            for i in range(1, 7):
-                for j in range(1,7):
-                    # modify sum(..., 2) -> sum(...)
-                    s_Rxx = np.abs(sum(GD_matrix[:,i-1]-GD_matrix[:,j-1]))/np.pi * k
-                    Rxx[i-1][j-1][:] = np.sinc(s_Rxx)
+            # UCA geometry
+            mic_theta = np.arange(np.pi/6, 2*np.pi, np.pi/3)
+            GD_matrix = np.ones((3,6))*np.array([np.cos(mic_theta), np.sin(mic_theta), np.zeros(6)] ) # 3 x 6
             # scan frq
             source_half = np.zeros((len(frq),))
             for i in range(1,len(frq)+1):
                 # apply frequency mask
                 if i*df < 500: continue
-                elif (i * df > 3500): break
+                elif (i * df > 5000):
+                    source_half[i-1] = tf_sigs[0, i-1] * 0.2
 
                 A = np.exp(1j*np.dot(kappa.T,GD_matrix)*k[i-1]) # 1x6
-                w = np.dot(np.linalg.inv(Rxx[:,:,i-1] + 0.00001*np.eye(6)), A)
+                w = np.dot(np.linalg.inv(self.Rxx[:,:,i-1] + 0.01*np.eye(6)), A)
                 W = w/(np.dot(np.conj(A.T), w))
                 #W = np.dot(np.linalg.inv(np.linalg.inv(np.dot(np.conj(A.T), w))), w)
                 source_half[i-1] = np.dot(W.T.conj() , tf_sigs[:,i-1])
