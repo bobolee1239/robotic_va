@@ -19,9 +19,15 @@ import numpy as np
 import pyaudio
 import os
 import logging
-from gcc_phat import gcc_phat
+try:
+    from .gcc_phat import gcc_phat
+except:
+    from gcc_phat import gcc_phat
 import math
-from pixel_ring import pixel_ring
+try:
+    from .pixel_ring import pixel_ring
+except:
+    from pixel_ring import pixel_ring
 import sounddevice as sd
 
 try:
