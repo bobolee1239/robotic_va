@@ -18,7 +18,6 @@
 import respeaker.usb_hid
 from respeaker.spi import spi
 
-
 class PixelRing:
     mono_mode = 1
     listening_mode = 2
