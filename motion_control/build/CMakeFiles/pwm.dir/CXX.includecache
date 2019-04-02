@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/pi/tea_ws/robotic_va/motion_control/src/pwm.cpp
+/home/pi/tealab_ws/robotic_va/motion_control/src/pwm.cpp
 wiringPi.h
 -
 stdio.h
