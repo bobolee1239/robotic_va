@@ -16,9 +16,15 @@ import numpy as np
 import pyaudio
 import os
 import logging
-from .gcc_phat import gcc_phat
+try:
+    from .gcc_phat import gcc_phat
+except:
+    from gcc_phat import gcc_phat
+try:
+    from .pixel_ring import pixel_ring
+except: 
+    from pixel_ring import pixel_ring
 import math
-from .pixel_ring import pixel_ring
 
 try:
     # python2 supporting
@@ -106,7 +112,7 @@ class UCA(object):
                              * np.array([np.cos(mic_theta[0]), np.sin(mic_theta[0])])
 
         self.tdoa_measures  = np.ones(((len(mic_theta)-1, ))) \
-                                * UCA.SOUND_SPEED / (self.radius*2)
+                                * UCA.SOUND_SPEED / self.radius
 
     def wakeup(self, keyword=None):
         self.decoder.end_utt()
