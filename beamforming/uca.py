@@ -33,7 +33,10 @@ except:
     # python3
     import queue as Queue
 
-from respeaker.vad import vad
+try:
+    from .respeaker.vad import vad
+except:
+    from respeaker.vad import vad
 
 logger              = logging.getLogger('uca')
 collecting_audio    = os.getenv('COLLECTING_AUDIO', 'no') 
