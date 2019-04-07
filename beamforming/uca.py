@@ -41,6 +41,9 @@ class UCA(object):
     UCA (Uniform Circular Array)
     
     Design Based on Respeaker 7 mics array architecture
+
+    It'll fire following events:
+        1. ssl_done 
     """
     SOUND_SPEED = 343.2
     def __init__(self, fs=16000, nframes=2000, radius=0.032, num_mics=6, quit_event=None, name='respeaker-7'):
@@ -107,6 +110,15 @@ class UCA(object):
 
         self.tdoa_measures  = np.ones(((len(mic_theta)-1, ))) \
                                 * UCA.SOUND_SPEED / (self.radius*2)
+        
+        self.handlers = dict();
+
+    def on(self, event, handler):
+        self.handlers[event] = handler
+
+    def fire(self, event, *argv):
+        """The first argument of the handler must be class itself"""
+        self.handlers[event](self, *argv)
 
     def wakeup(self, keyword=None):
         self.decoder.end_utt()
@@ -244,6 +256,9 @@ class UCA(object):
             # setting led && logger info
             pixel_ring.set_direction(direction)
             logger.debug('@ {:.2f}, delays = {}'.format(direction, np.array(delays)*self.fs))
+			# fire event callback function
+			if 'ssl_done' in self.handlers:
+				self.fire('ssl_done', direction)
 
             # *************  apply DAS beamformer  ****************
             int_delays = (np.array(delays)*self.fs).astype('int16')
