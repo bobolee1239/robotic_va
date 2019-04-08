@@ -117,6 +117,15 @@ class UCA(object):
         self.tdoa_measures  = np.ones(((len(mic_theta)-1, ))) \
                                 * UCA.SOUND_SPEED / self.radius
 
+        self.handlers = dict()
+
+    def on(self, event, handler):
+        self.handlers[event] = handler
+
+    def fire(self, event, *arg):
+        if event in self.handlers:
+            self.handlers[event](self, *arg)
+
     def wakeup(self, keyword=None):
         self.decoder.end_utt()
         self.decoder.start_utt()
