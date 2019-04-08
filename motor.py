@@ -13,10 +13,11 @@ def sslHandler(firer, direction):
     """
     callback function to handler ssl event
     """
+    print('from callback @', direction)
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
     # setup UCA
     q = threading.Event()
