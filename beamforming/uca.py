@@ -127,7 +127,8 @@ class UCA(object):
 
     def fire(self, event, *argv):
         """The first argument of the handler must be class itself"""
-        self.handlers[event](self, *argv)
+        if event in self.handlers:
+            self.handlers[event](self, *argv)
 
     def wakeup(self, keyword=None):
         self.decoder.end_utt()
@@ -266,9 +267,8 @@ class UCA(object):
             pixel_ring.set_direction(direction)
             logger.debug('@ {:.2f}, @{:.2f}, delays = {}'.format(direction, polar_angle, np.array(delays)*self.fs))
 
-			# fire event callback function
-			if 'ssl_done' in self.handlers:
-				self.fire('ssl_done', direction)
+            # fire event callback function
+            self.fire('ssl_done', direction)
 
             # *************  apply DAS beamformer  ****************
             int_delays = (np.array(delays)*self.fs).astype('int16')
