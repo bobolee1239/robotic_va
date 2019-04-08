@@ -251,11 +251,12 @@ class UCA(object):
             raw_sigs = np.fromstring(chunk, dtype='int16')
 
             # tdoa & doa estimation based on planar wavefront
-            direction, polarAng, delays = self.DOA(raw_sigs)
+            direction, polar_angle, delays = self.DOA(raw_sigs)
 
             # setting led && logger info
             pixel_ring.set_direction(direction)
-            logger.debug('@ {:.2f}, delays = {}'.format(direction, np.array(delays)*self.fs))
+            logger.debug('@ {:.2f}, @{:.2f}, delays = {}'.format(direction, polar_angle, np.array(delays)*self.fs))
+
 			# fire event callback function
 			if 'ssl_done' in self.handlers:
 				self.fire('ssl_done', direction)
