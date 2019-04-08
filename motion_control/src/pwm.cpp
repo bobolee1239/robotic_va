@@ -8,8 +8,8 @@
 
 const int PWM_pin1  = 1;  /* GPIO 1 for wiringPi = GPIO 18 for BCM */
 const int PWM_pin2  = 23; /* GPIO 23 for wiringPi = GPIO 13 for BCM */
-const int PWM_pin2N = 24; /* GPIO 24 for wiringPi = GPIO 19 for BCM */
-const int PWM_pin1N = 26; /* GPIO 26 for wiringPi = GPIO 12 for BCM */
+// const int PWM_pin2N = 24; /* GPIO 24 for wiringPi = GPIO 19 for BCM */
+// const int PWM_pin1N = 26; /* GPIO 26 for wiringPi = GPIO 12 for BCM */
 
 int main(int argc, char* argv[])
 {
@@ -19,9 +19,9 @@ int main(int argc, char* argv[])
 
     /* set pwm pin as output */
     pinMode(PWM_pin1, PWM_OUTPUT);
-    pinMode(PWM_pin1N, PWM_OUTPUT);
+    // pinMode(PWM_pin1N, PWM_OUTPUT);
     pinMode(PWM_pin2, PWM_OUTPUT);
-    pinMode(PWM_pin2N, PWM_OUTPUT);
+    // pinMode(PWM_pin2N, PWM_OUTPUT);
 
     while(1){
         double d1, d2;
