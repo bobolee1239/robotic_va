@@ -194,7 +194,7 @@ class UCA(object):
         # found out theta
         # another 180.0 for positive value, 30.0 for respeaker architecture
         return ((math.atan2(sol[1], sol[0])/np.pi*180.0 + 210.0) % 360
-                ,math.acos(np.sqrt(sol.T.dot(sol)))/np.pi*180.0, [0] + tau) 
+                ,math.acos(np.sqrt(sol.T.dot(sol)))/np.pi*180.0, [0] + tau)
 
     def listen(self, duration=9, timeout=3):
         vad.reset()
