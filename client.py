@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 
-from beamforming.uca import UCA
+from beamforming.uca import UCA, pixel_ring
 import logging
-import threading 
+import threading
 import time
 import boto3
-import numpy as np 
+import numpy as np
 from scipy import signal
 import socket
 
 import sounddevice as sd
 
+def sslHandler(firer, direction, polar_angle):
+    pixel_ring.set_direction(direction)
+    print('In callback: src @ {:.2f}, @{:.2f}, delays = {}'.format(direction,
+            polar_angle))
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
@@ -23,11 +27,12 @@ if __name__ == '__main__':
     print('Connecting to {0[0]}:{0[1]} ...'.format(server_addr))
 
     sock.connect(server_addr)
-    
+
     # setup UCA
     q = threading.Event()
     uca = UCA(fs=16000, nframes=2000, radius=0.032, num_mics=6, \
                 quit_event=q, name='respeaker-7')
+    uca.on('ssl_done', sslHandler)
 
     enhanced = None
 
@@ -39,24 +44,23 @@ if __name__ == '__main__':
                 print('Wake up')
                 chunks = uca.listen(duration=1, timeout=1)
                 enhanced = uca.beamforming(chunks)
-                
+
                 sig_len = enhanced.shape[0]
                 if sig_len > 16000:
                     print('\t*sig too long')
                     enhanced = enhanced[0:16000]
                 elif sig_len < 16000:
                     print('\t*sig too short')
-                    enhanced = np.concatenate((enhanced, 
+                    enhanced = np.concatenate((enhanced,
                                 np.zeros(16000 - sig_len, dtype='int16')), axis=0)
 
                 print('Streaming to server ...')
                 sock.sendall(enhanced.tostring())
 
                 print('Received: ', repr(sock.recv(2)))
-                
+
         except KeyboardInterrupt:
             print('Quit')
             q.set()
             break
     uca.close()
-

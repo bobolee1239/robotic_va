@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from beamforming.uca import UCA
+from beamforming.uca import UCA, pixel_ring
 import logging
 import threading
 import time
@@ -23,11 +23,13 @@ p2 = GPIO.PWM(pwm2, 1000)  # BCM 18, Freq 1000Hz
 p1.start(0.5)
 p2.start(0.5)
 
-def sslHandler(firer, direction):
+def sslHandler(firer, direction, polar_angle):
     """
     callback function to handler ssl event
     """
-    print('from callback @', direction)
+    pixel_ring.set_direction(direction)
+    print('In callback: src @ {:.2f}, @{:.2f}, delays = {}'.format(direction,
+            polar_angle, np.array(delays)*self.fs))
     # range of direction: -180 ~ 180
     ## if direction > 180:
     ##     direction -= 360
@@ -41,7 +43,7 @@ def sslHandler(firer, direction):
     ## p2.ChangeDutyCycle(out2 * 100)
 
     if direction > 180:
-        out1 = (360 - direction) / 180 
+        out1 = (360 - direction) / 180
         out2 = 0
     else:
         out2 = direction / 180

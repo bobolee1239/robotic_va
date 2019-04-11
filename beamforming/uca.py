@@ -22,7 +22,7 @@ try:
     from .gcc_phat import gcc_phat
 except:
     from gcc_phat import gcc_phat
-try:    
+try:
     from .pixel_ring import pixel_ring
 except:
     from pixel_ring import pixel_ring
@@ -265,11 +265,12 @@ class UCA(object):
             direction, polar_angle, delays = self.DOA(raw_sigs)
 
             # setting led && logger info
-            pixel_ring.set_direction(direction)
-            logger.debug('@ {:.2f}, @{:.2f}, delays = {}'.format(direction, polar_angle, np.array(delays)*self.fs))
+            ## Moving following code to event handler
+            ## pixel_ring.set_direction(direction)
+            ## logger.debug('@ {:.2f}, @{:.2f}, delays = {}'.format(direction, polar_angle, np.array(delays)*self.fs))
 
             # fire event callback function
-            self.fire('ssl_done', direction)
+            self.fire('ssl_done', direction, polar_angle)
 
             # *************  apply DAS beamformer  ****************
             int_delays = (np.array(delays)*self.fs).astype('int16')
@@ -360,12 +361,18 @@ class UCA(object):
 
 
 
+def sslHandler(firer, direction, polar_angle):
+    pixel_ring.set_direction(direction)
+    print('In callback: src @ {:.2f}, @{:.2f}, delays = {}'.format(direction,
+            polar_angle))
+
 
 def task(quit_event):
     import time
 
     uca = UCA(fs=16000, nframes=2000, radius=0.032, num_mics=6, \
                 quit_event=quit_event, name='respeaker-7')
+    uca.on('ssl_done', sslHandler);
 
     while not quit_event.is_set():
         if uca.wakeup('bagel'):

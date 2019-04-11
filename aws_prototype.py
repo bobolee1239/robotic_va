@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 
-from beamforming.uca import UCA
+from beamforming.uca import UCA, pixel_ring
 import logging
-import threading 
+import threading
 import time
 import boto3
-import numpy as np 
+import numpy as np
 from scipy import signal
 
 import sounddevice as sd
 
+def sslHandler(firer, direction, polar_angle):
+    pixel_ring.set_direction(direction)
+    print('In callback: src @ {:.2f}, @{:.2f}, delays = {}'.format(direction,
+            polar_angle))
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
@@ -17,6 +21,7 @@ if __name__ == '__main__':
     q = threading.Event()
     uca = UCA(fs=16000, nframes=2000, radius=0.032, num_mics=6, \
                 quit_event=q, name='respeaker-7')
+    uca.on('ssl_done', sslHandler)
 
     enhanced = None
 
@@ -30,16 +35,16 @@ if __name__ == '__main__':
                 enhanced = uca.beamforming(chunks)
 
                 response = lex_client.post_content(
-                    botName = "musicBot", 
+                    botName = "musicBot",
                     botAlias = "songRequestor",
-                    userId = "bobolee", 
+                    userId = "bobolee",
                     sessionAttributes = {
-                    
-                    }, 
+
+                    },
                     requestAttributes = {
-                    }, 
-                    contentType = "audio/lpcm; sample-rate=8000; sample-size-bits=16; channel-count=1; is-big-endian=false", 
-                    accept = 'audio/pcm', 
+                    },
+                    contentType = "audio/lpcm; sample-rate=8000; sample-size-bits=16; channel-count=1; is-big-endian=false",
+                    accept = 'audio/pcm',
                     inputStream = (signal.decimate(enhanced/2**15, 2)* 2**15).astype('<i2').tostring()
                 )
 
@@ -57,7 +62,7 @@ if __name__ == '__main__':
                 sd.play(content / np.max(content), 16000)
                 print('\n-------------------')
                 print(response["message"])
-                
+
                 if isFailed: break
         except KeyboardInterrupt:
             print('Quit')
@@ -70,10 +75,8 @@ if __name__ == '__main__':
         sd.play(content / np.max(content), 16000)
         print('\n-------------------')
         print(response["message"])
-        
+
         print("\n///// Request Information ///// ")
         for keys in response["slots"].keys():
             print("  * " + keys + ": " + response["slots"][keys])
         print("\n\nConversation END!")
-
-
