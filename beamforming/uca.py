@@ -1,11 +1,15 @@
+#!/usr/bin/env python3
 #
-## ******************************
-##  AUTHOR: Brian Lee
+##
+## Copyright 2019 Tsung-Han Brian Lee, Shincheng Huang
+## *****************************************************
+##  AUTHOR: Tsung-Han Brian Lee,
+##          Shincheng Huang
 ##  DATE  : 12th Feb, 2019
 ##
-## ******************************
+## *****************************************************
 ##  FILE        : uca.py
-##  DESCRIPTION :
+##  DESCRIPTION : component based design UCA
 ##
 ##
 #
