@@ -78,7 +78,7 @@ p2.start(0.5)
 ##
 def sslHandler(firer, direction, polar_angle):
     pixel_ring.set_direction(direction)
-    logger.info('In callback: src @ {:.2f}, @{:.2f}, delays = {}'.format(direction,
+    logger.info('In callback: src @ {:.2f}, @{:.2f}'.format(direction,
                  polar_angle))
     # range of direction: -180 ~ 180
     ## if direction > 180:
@@ -146,6 +146,7 @@ if __name__ == '__main__':
                 chunks = uca.listen()
                 enhanced = uca.beamforming(chunks)
 
+                logger.info('sending ajax request to AWS-LEX')
                 # sending AJAX request to AWS-LEX
                 response = lex_client.post_content(
                     botName = "RoboticVA",
@@ -171,21 +172,26 @@ if __name__ == '__main__':
                 # Play enhanced speech back
                 if DEBUG:
                     logger.info('Playing enhanced speech ...')
-                    playAudio(enhanced / 2**14, 16000):
+                    playAudio(enhanced / 2**14, 16000)
                     time.sleep(3.0)
 
                 ##
                 #   Playing response back to user
                 ##
-                playAudio(content / np.max(content), 16000):
+                playAudio(content / np.max(content), 16000)
                 logger.info('\n-------------------')
-                logger.info(' [RESPONSE]:', response["message"])
+                logger.info(' [RESPONSE]: ' + response["message"])
 
                 if isFailed: break
         except KeyboardInterrupt:
             logger.info('Quit')
             q.set()
             break
+        except Exception as e:
+            logger.warn(e)
+            p1.stop()
+            p2.stop()
+            GPIO.cleanup()
     uca.close()
 
     if not isFailed:
@@ -194,7 +200,14 @@ if __name__ == '__main__':
         logger.info('\n-------------------')
         logger.info(response["message"])
 
-        logger.info("\n///// Request Information ///// ")
+        print("\n///// Request Information ///// ")
         for keys in response["slots"].keys():
-            logger.info("  * " + keys + ": " + response["slots"][keys])
-        logger.info("\n\n////////// Conversation END! //////////")
+            print("  * " + keys + ": " + response["slots"][keys])
+        print("\n\n////////// Conversation END! //////////")
+
+##
+#    Free GPIO Resource
+##
+p1.stop()
+p2.stop()
+GPIO.cleanup()
