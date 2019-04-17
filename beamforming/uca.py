@@ -1,35 +1,55 @@
 #!/usr/bin/env python3
 #
+##  Copyright (c) 2019 Tsung-Han Brian Lee, Shincheng Huang
+##  ---------------------------------------------------------------------------
+##  * AUTHOR: Tsung-Han Brian Lee,
+##            Shincheng Huang
+##  * FILE        : uca.py
+##  * DESCRIPTION : component based design UCA
+##  * REFERENCE  :
+##       1. https://github.com/respeaker
+##  ---------------------------------------------------------------------------
+##  Permission is hereby granted, free of charge, to any person obtaining a
+##  copy of this software and associated documentation files (the "Software"),
+##  to deal in the Software without restriction, including without limitation
+##  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+##  and/or sell copies of the Software, and to permit persons to whom the
+##  Software is furnished to do so, subject to the following conditions:
 ##
-## Copyright 2019 Tsung-Han Brian Lee, Shincheng Huang
-## *****************************************************
-##  AUTHOR: Tsung-Han Brian Lee,
-##          Shincheng Huang
-##  DATE  : 12th Feb, 2019
-##
-## *****************************************************
-##  FILE        : uca.py
-##  DESCRIPTION : component based design UCA
-##
-##
+##  The above copyright notice and this permission notice shall be included in
+##  all copies or substantial portions of the Software.
+
+##  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+##  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+##  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+##  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+##  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+##  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+##  IN THE SOFTWARE.
+##  ---------------------------------------------------------------------------
 #
 
-import collections
-import threading
-import numpy as np
-import pyaudio
-import os
-import logging
-import math
+import collections          #  deque
+import threading            #  multithreading supporting
+import numpy as np          #  science computing
+import pyaudio              #  audio I/O
+import os                   #  system path utility
+import logging              #  diplay information in various level
+import math                 #  triangular math
 
+#  import gccphat utility
 try:
     from .gcc_phat import gcc_phat
 except:
     from gcc_phat import gcc_phat
+
+#  import led contrl unit on respeaker
 try:
     from .pixel_ring import pixel_ring
 except:
     from pixel_ring import pixel_ring
+
+#  import queue to be the bridge between threads
 try:
     # python2 supporting
     import Queue
@@ -37,6 +57,7 @@ except:
     # python3
     import queue as Queue
 
+#  voice active detection utility
 try:
     from .respeaker.vad import vad
 except:
@@ -47,9 +68,6 @@ collecting_audio    = os.getenv('COLLECTING_AUDIO', 'no')
 
 
 class UCA(object):
-    listening_mask   = (1<<0)
-    detecting_mask   = (1<<1)
-    validation = []
     """
     UCA (Uniform Circular Array)
 
@@ -59,6 +77,10 @@ class UCA(object):
         1. ssl_done
     """
     SOUND_SPEED = 343.2
+    listening_mask   = (1<<0)
+    detecting_mask   = (1<<1)
+    validation = []
+
     def __init__(self, fs=16000, nframes=2000, radius=0.032, num_mics=6, quit_event=None, name='respeaker-7'):
         self.radius     = radius
         self.fs         = fs
@@ -70,19 +92,24 @@ class UCA(object):
 
         self.pyaudio_instance = pyaudio.PyAudio()
 
+        #  tryna get device which meet the user's need
         self.device_idx = None
         for i in range(self.pyaudio_instance.get_device_count()):
             dev  = self.pyaudio_instance.get_device_info_by_index(i)
             name = dev['name'].encode('utf-8')
             print(i, name, dev['maxInputChannels'], dev['maxOutputChannels'])
+
+            #  If found the device
             if name.lower().find(b'respeaker') >= 0 and dev['maxInputChannels'] >= num_mics:
                 print('Use {}'.format(name))
                 self.device_idx = i
                 break
 
+        #  if no device is found
         if not self.device_idx:
             raise ValueError('Wrong #channels of mic array!')
 
+        #  input stream
         self.stream = self.pyaudio_instance.open(
             input       = True,
             start       = False,
@@ -118,12 +145,13 @@ class UCA(object):
         mic_theta           = np.arange(0, 2*np.pi, 2*np.pi/6)
         self.tdoa_matrix    = np.array([np.cos(mic_theta[1:]), np.sin(mic_theta[1:])]).T
 
-        self.tdoa_matrix -= np.ones((len(mic_theta)-1, 2)) \
-                             * np.array([np.cos(mic_theta[0]), np.sin(mic_theta[0])])
+        self.tdoa_matrix   -= np.ones((len(mic_theta)-1, 2)) \
+                              * np.array([np.cos(mic_theta[0]), np.sin(mic_theta[0])])
 
         self.tdoa_measures  = np.ones(((len(mic_theta)-1, ))) \
                                 * UCA.SOUND_SPEED / self.radius
 
+        # store callback fcn
         self.handlers = dict();
 
     def on(self, event, handler):
@@ -138,12 +166,12 @@ class UCA(object):
         self.decoder.end_utt()
         self.decoder.start_utt()
 
-        # flag up detecting
-        self.status |= UCA.detecting_mask
-
         # clear detecting queue
         self.detect_history.clear()
         self.detect_queue.queue.clear()
+
+        # flag up detecting
+        self.status |= UCA.detecting_mask
 
         self.stream.start_stream()
         result = None
@@ -152,9 +180,11 @@ class UCA(object):
         while not self.quit_event.is_set():
             if self.detect_queue.qsize() > 4:
                 logger.info('Too many delays, {0} in queue'.format(self.detect_queue.qsize()))
+            #  ensure something in the queue
             elif self.detect_queue.empty():
                 continue
 
+            #  pop data from the queue
             data = self.detect_queue.get()
 
             self.detect_history.append(data)
@@ -163,8 +193,6 @@ class UCA(object):
 
             hypothesis = self.decoder.hyp()
             if hypothesis:
-
-
                 if collecting_audio != 'no':
                     logger.debug(collecting_audio)
                     # save detect_history as wave ?
@@ -317,11 +345,11 @@ class UCA(object):
                 if not self.active:
                     for d in self.listen_history:
                         self.listen_queue.put(d)
-                        self.listen_countdown[0] -= 1 # count down timeout
+                        self.listen_countdown[0] -= 1  # count down timeout
                     self.listen_history.clear()
 
                 self.listen_queue.put(in_data)
-                self.listen_countdown[1] -= 1         # count down listening time
+                self.listen_countdown[0] -= 1          # count down listening time
             else:
                 if self.active:
                     self.listen_queue.put(in_data)
