@@ -32,16 +32,16 @@ typedef volatile struct PIController {
 /***********************************************************************/
 
 /********************* PARAMETERS ***************************************/
-const int leftPWM   = 24;     //  WiringPi  1 : BCM 18
-const int leftPWMn  = 23;     //  WiringPi 26 : BCM 12
-const int rightPWM  = 1;      //  WiringPi 23 : BCM 13
-const int rightPWMn = 26;     //  WiringPi 24 : BCM 19
+const int leftPWM   =  1;     //  WiringPi  1 : BCM 18
+const int leftPWMn  = 26;     //  WiringPi 26 : BCM 12
+const int rightPWM  = 24;     //  WiringPi 23 : BCM 13
+const int rightPWMn = 23;     //  WiringPi 24 : BCM 19
 
 PIController_t leftController  = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 PIController_t rightController = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 
-double leftRef  = -25.0;
-double rightRef = 25.0;
+double leftRef  = -30.0;
+double rightRef = -10.0;
 double Ts       = 0.01;       // sampling interval
 
 /***********************************************************************/
