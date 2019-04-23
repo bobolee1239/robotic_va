@@ -93,9 +93,9 @@ int main(int argc, char* argv[]) {
 
 void timerISR(int signum) {
     /**
-     **  Update rotation history
+     **  Update rotation history : 6 for the coef from rpm -> degree
      **/
-    angle2Rotate -= ((rightRef - leftRef) * 0.01 * R / L);
+    angle2Rotate -= ((rightRef - leftRef) * 0.01 * R / L * 6);
     //  give command
     if (std::abs(angle2Rotate) < 0.001) {
       leftRef  = 0.0;
