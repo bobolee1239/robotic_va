@@ -1,6 +1,6 @@
 //  Copyright (c) 2019 Tsung-Han Lee
 /**************************************
- ** FILE    : motorControl.cpp
+ ** FILE    : mobileBot.cpp
  ** AUTHOR  : Tsung-Han Lee
  **************************************/
 
@@ -11,8 +11,12 @@
 #include <sys/time.h>
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 
 #include "hall_sensor_decode.h"
+
+#define R   0.05    //  Unit: meter
+#define L   0.27    //  Unit: meter
 
 /********************* DEFINITION ***************************************/
 int initHallSensors();
@@ -22,9 +26,9 @@ void timerISR(int signum);
 
 typedef volatile struct PIController {
     volatile double rpm;
-    volatile double piOut;      //   output of PI controller
-    volatile double err;        //    error
-    volatile double ierr;       //     integration of error
+    volatile double piOut;      //  output of PI controller
+    volatile double err;        //  error
+    volatile double ierr;       //  integration of error
     double kp;
     double ki;
 } PIController_t;
@@ -40,34 +44,45 @@ const int rightPWMn = 26;     //  WiringPi 24 : BCM 19
 PIController_t leftController  = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 PIController_t rightController = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 
-double leftRef  = -25.0;
-double rightRef = 25.0;
-double Ts       = 0.01;       // sampling interval
-
+const double Ts     = 0.01;       //  sampling interval
+double leftRef      = 0.0;        //  reference signal for left wheel
+double rightRef     = 0.0;        //  reference signal for right wheel
+double angle2Rotate = 0.0;        //  angle to rotate for mobile robot
 /***********************************************************************/
 
 int main(int argc, char* argv[]) {
+    if (argc != 2) {
+      std::cout << "[Usage] ./mobileBot <rotation_angle>" << std::endl;
+      closeHallSensor();
+      return -1;
+    }
     /* Setup wiringPi */
     if (wiringPiSetup() < 0) {
         std::cerr << "Unable to setup wiringPi: "
                   << strerror(errno) << std::endl;
+        closeHallSensor();
         return -1;
     }
 
     if (initHallSensors() < 0) {
         std::cerr << "Init hall sensors failed!" << std::endl;
+        closeHallSensor();
+        return -1;
     }
 
     initPWM();
     initTimerISR();
 
+    angle2Rotate = static_cast<double>(atoi(argv[1]));
     while (1) {
-        /* output sensor */
+        /* receive rotation angle and set timeout */
+        /* output sensor information for debug sake */
+#ifdef DEBUG
         std::cout << "l:" << std::fixed << std::setprecision(2)
                   << leftController.rpm << " , ";
         std::cout << "r:" << std::fixed << std::setprecision(2)
                   << rightController.rpm << std::endl;
-
+#endif
         sleep(1);
     }
 
@@ -77,6 +92,21 @@ int main(int argc, char* argv[]) {
 }
 
 void timerISR(int signum) {
+    /**
+     **  Update rotation history
+     **/
+    angle2Rotate -= ((rightRef - leftRef) * 0.01 * R / L);
+    //  give command
+    if (std::abs(angle2Rotate) < 0.001) {
+      leftRef  = 0.0;
+      rightRef = 0.0;
+    } else if (angle2Rotate > 0) {
+      leftRef  = -25.0;
+      rightRef = 25.0;
+    } else {
+      leftRef  = 25.0;
+      rightRef = -25.0;
+    }
     /*********** MOTOR1 **********/
     // measure TODO... translate rpm correctly : gear ratio
     leftController.rpm = leftWheel->numStateChange * 1.04166;

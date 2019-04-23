@@ -9,11 +9,10 @@
 #include <wiringPi.h>
 //  #include <iostream>  //  DEBUG
 
-/* TODO... mapping BCM Pin to WiringPi Pin number */
-#define LEFT_HALL_A     0
-#define LEFT_HALL_B     2
-#define RIGHT_HALL_A    21
-#define RIGHT_HALL_B    30
+#define LEFT_HALL_A     0           //  BCM 17 : WiringPi  0
+#define LEFT_HALL_B     2           //  BCM 27 : WiringPi  2
+#define RIGHT_HALL_A    21          //  BCM  5 : WiringPi 21
+#define RIGHT_HALL_B    30          //  BCM  0 : WiringPi 30
 
 /********************************************************
  *  WheelState should be defined as volatile since it
