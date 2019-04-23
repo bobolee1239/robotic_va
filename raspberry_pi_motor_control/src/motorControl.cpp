@@ -40,7 +40,7 @@ const int rightPWMn = 23;     //  WiringPi 24 : BCM 19
 PIController_t leftController  = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 PIController_t rightController = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 
-double leftRef  = -30.0;
+double leftRef  = 30.0;
 double rightRef = -10.0;
 double Ts       = 0.01;       // sampling interval
 
