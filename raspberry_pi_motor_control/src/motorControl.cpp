@@ -33,15 +33,15 @@ typedef volatile struct PIController {
 
 /********************* PARAMETERS ***************************************/
 const int leftPWM   =  1;     //  WiringPi  1 : BCM 18
-const int leftPWMn  = 26;     //  WiringPi 26 : BCM 12
-const int rightPWM  = 24;     //  WiringPi 23 : BCM 13
-const int rightPWMn = 23;     //  WiringPi 24 : BCM 19
+//const int leftPWMn  = 26;     //  WiringPi 26 : BCM 12
+const int rightPWM  = 23;     //  WiringPi 23 : BCM 13
+//const int rightPWMn = 24;     //  WiringPi 24 : BCM 19
 
 PIController_t leftController  = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 PIController_t rightController = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 
-double leftRef  = 30.0;
-double rightRef = -10.0;
+double leftRef  = -15.0;
+double rightRef = -30.0;
 double Ts       = 0.01;       // sampling interval
 
 /***********************************************************************/
@@ -67,7 +67,12 @@ int main(int argc, char* argv[]) {
                   << leftController.rpm << " , ";
         std::cout << "r:" << std::fixed << std::setprecision(2)
                   << rightController.rpm << std::endl;
-
+#ifdef DEBUG
+        std::cout << "l pi:" << std::fixed << std::setprecision(2)
+                  << leftController.piOut << " , ";
+        std::cout << "r pi:" << std::fixed << std::setprecision(2)
+                  << rightController.piOut << std::endl;
+#endif
         sleep(1);
     }
 
@@ -110,7 +115,7 @@ void timerISR(int signum) {
     /**************************************************/
     /*********** MOTOR2 **********/
     // measure TODO... translate rpm correctly : gear ratio
-    rightController.rpm = rightWheel->numStateChange * 1.04166;
+    rightController.rpm = rightWheel->numStateChange * 1.04166 * 2;
     rightWheel->numStateChange = 0;
 
     /**************** PI Controller *******************/
@@ -190,9 +195,9 @@ int initHallSensors() {
 int initPWM() {
     /* set pwm pin as output */
     pinMode(leftPWM, PWM_OUTPUT);
-    pinMode(leftPWMn, PWM_OUTPUT);
+//    pinMode(leftPWMn, PWM_OUTPUT);
     pinMode(rightPWM, PWM_OUTPUT);
-    pinMode(rightPWMn, PWM_OUTPUT);
+//    pinMode(rightPWMn, PWM_OUTPUT);
 
     pwmWrite(leftPWM, static_cast<int>(1024*0.5));
     pwmWrite(rightPWM, static_cast<int>(1024*0.5));
