@@ -159,7 +159,7 @@ class UCA(object):
         self.handlers[event] = handler
 
     def fire(self, event, *argv):
-        """The first argument of the handler must be class itself"""
+        """The first argument of the handler must be instance itself"""
         if event in self.handlers:
             self.handlers[event](self, *argv)
 
@@ -287,7 +287,7 @@ class UCA(object):
         self.listen_queue.put('') # put logitical false into queue
 
     def beamforming(self, chunks):
-        delays = [0.0] * (self.num_mics-1)
+        delays = [0.0] * (self.num_mics)
 
         enhanced_speech = []
         avgFrames       = None
@@ -407,7 +407,7 @@ class UCA(object):
 
 def sslHandler(firer, direction, polar_angle):
     pixel_ring.set_direction(direction)
-    print('In callback: src @ {:.2f}, @{:.2f}, delays = {}'.format(direction,
+    print('In callback: src @ {:.2f}, @{:.2f}'.format(direction,
             polar_angle))
 
 
