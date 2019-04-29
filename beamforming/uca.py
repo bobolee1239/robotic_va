@@ -75,6 +75,7 @@ class UCA(object):
 
     It'll fire following events:
         1. ssl_done
+        2. horizontal_avg
     """
     SOUND_SPEED = 343.2
     listening_mask   = (1<<0)
@@ -289,20 +290,31 @@ class UCA(object):
         delays = [0.0] * (self.num_mics-1)
 
         enhanced_speech = []
+        avgFrames       = None
+        count           = 0
         for chunk in chunks:
-            # decode from binary stream
+            #  decode from binary stream
             raw_sigs = np.fromstring(chunk, dtype='int16')
 
-            # tdoa & doa estimation based on planar wavefront
-            direction, polar_angle, delays = self.DOA(raw_sigs)
+            count += 1
+            count %= 3
 
-            # setting led && logger info
-            ## Moving following code to event handler
-            ## pixel_ring.set_direction(direction)
-            ## logger.debug('@ {:.2f}, @{:.2f}, delays = {}'.format(direction, polar_angle, np.array(delays)*self.fs))
+            if count == 1:
+                avgFrames = raw_sigs
+            else:
+                avgFrames += raw_sigs
 
-            # fire event callback function
-            self.fire('ssl_done', direction, polar_angle)
+            if count == 0:
+                #  tdoa & doa estimation based on planar wavefront
+                direction, polar_angle, delays = self.DOA(raw_sigs)
+                avgFrames = None
+                #  fire event callback function
+                self.fire('ssl_done', direction, polar_angle)
+                # setting led && logger info
+                ## Moving following code to event handler
+                ## pixel_ring.set_direction(direction)
+                ## logger.debug('@ {:.2f}, @{:.2f}, delays = {}'.format(direction, polar_angle, np.array(delays)*self.fs))
+
 
             # *************  apply DAS beamformer  ****************
             int_delays = (np.array(delays)*self.fs).astype('int16')
