@@ -419,7 +419,7 @@ def task(quit_event):
     uca.on('ssl_done', sslHandler);
 
     while not quit_event.is_set():
-        if uca.wakeup('bagel'):
+        if uca.wakeup('hello amber'):
             print('Wake up')
             time.sleep(1.0)
             chunks = uca.listen()
