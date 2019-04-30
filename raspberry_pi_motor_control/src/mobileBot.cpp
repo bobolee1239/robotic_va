@@ -1,9 +1,29 @@
 //  Copyright (c) 2019 Tsung-Han Lee
-/**************************************
- ** FILE    : mobileBot.cpp
- ** AUTHOR  : Tsung-Han Lee
- **************************************/
-
+/******************************************************************************
+ ** FILE       : mobileBot.cpp
+ ** AUTHOR     : Tsung-Han Brian Lee
+ ** DESCRIPTION:
+ ** LICENSE    : MIT
+ ** ---------------------------------------------------------------------------
+ ** Permission is hereby granted, free of charge, to any person obtaining a
+ ** copy of this software and associated documentation files (the "Software"),
+ ** to deal in the Software without restriction, including without limitation
+ ** the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ ** and/or sell copies of the Software, and to permit persons to whom the
+ ** Software is furnished to do so, subject to the following conditions:
+ **
+ ** The above copyright notice and this permission notice shall be included
+ ** in all copies or substantial portions of the Software.
+ **
+ ** THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ ** OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ ** FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ ** AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ ** LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ ** OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ ** THE SOFTWARE.
+ ** ---------------------------------------------------------------------------
+ ******************************************************************************/
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
@@ -11,12 +31,11 @@
 #include <sys/time.h>
 #include <iostream>
 #include <iomanip>
-#include <cmath>
+#include "ros.h"
+#include "geometry_msgs/Twist.h"
+#include "ros/console.h"
 
 #include "hall_sensor_decode.h"
-
-#define R   0.05    //  Unit: meter
-#define L   0.27    //  Unit: meter
 
 /********************* DEFINITION ***************************************/
 int initHallSensors();
@@ -33,56 +52,63 @@ typedef volatile struct PIController {
     double ki;
 } PIController_t;
 
+typedef volatile struct Vehicle {
+    const double r;             //  radius
+    const double L;             //  distance between two wheels
+    volatile double V;          //  forward speed
+    volatile double W;          //  rotation speed
+    volatile double refV;       //  reference forward speed
+    volatile double refW;       //  reference rotation speed
+} Vehicle_t;
 /***********************************************************************/
 
 /********************* PARAMETERS ***************************************/
-const int leftPWM   = 24;     //  WiringPi  1 : BCM 18
-const int leftPWMn  = 23;     //  WiringPi 26 : BCM 12
-const int rightPWM  = 1;      //  WiringPi 23 : BCM 13
-const int rightPWMn = 26;     //  WiringPi 24 : BCM 19
+const int leftPWM   =  1;     //  WiringPi  1 : BCM 18
+const int rightPWM  = 23;     //  WiringPi 23 : BCM 13
 
 PIController_t leftController  = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 PIController_t rightController = {0.0, 0.0, 0.0, 0.0, 0.008, 0.02};
 
-const double Ts     = 0.01;       //  sampling interval
-double leftRef      = 0.0;        //  reference signal for left wheel
-double rightRef     = 0.0;        //  reference signal for right wheel
-double angle2Rotate = 0.0;        //  angle to rotate for mobile robot
+Vehicle_t car = {0.0989, 0.2748, 0.0, 0.0, 0.0, 0.0};
+
+double leftRef  = -15.0;
+double rightRef = -30.0;
+double Ts       = 0.01;       // sampling interval
+
 /***********************************************************************/
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-      std::cout << "[Usage] ./mobileBot <rotation_angle>" << std::endl;
-      closeHallSensor();
-      return -1;
-    }
     /* Setup wiringPi */
     if (wiringPiSetup() < 0) {
         std::cerr << "Unable to setup wiringPi: "
                   << strerror(errno) << std::endl;
-        closeHallSensor();
         return -1;
     }
 
     if (initHallSensors() < 0) {
         std::cerr << "Init hall sensors failed!" << std::endl;
-        closeHallSensor();
-        return -1;
     }
 
     initPWM();
     initTimerISR();
 
-    angle2Rotate = static_cast<double>(atoi(argv[1]));
     while (1) {
-        /* receive rotation angle and set timeout */
-        /* output sensor information for debug sake */
-#ifdef DEBUG
+        /*************************
+         **  1. 2pi/60      = 0.1047197551
+         **  2. 2pi/60/2    = 0.05235987756
+         **************************/
+        car.V = (leftController.rpm + rightController.rpm)
+                  * car.r * 0.05235987756;
+        car.W = -car.r * (rightController.rpm - leftController.rpm)
+                / car.L * 0.1047197551;
+        //  [TODO] publish to ros topic
+
+        /* output sensor */
         std::cout << "l:" << std::fixed << std::setprecision(2)
                   << leftController.rpm << " , ";
         std::cout << "r:" << std::fixed << std::setprecision(2)
                   << rightController.rpm << std::endl;
-#endif
+        //  [TODO] looping in fixed rate
         sleep(1);
     }
 
@@ -92,21 +118,6 @@ int main(int argc, char* argv[]) {
 }
 
 void timerISR(int signum) {
-    /**
-     **  Update rotation history : 6 for the coef from rpm -> degree
-     **/
-    angle2Rotate -= ((rightRef - leftRef) * 0.01 * R / L * 6);
-    //  give command
-    if (std::abs(angle2Rotate) < 0.001) {
-      leftRef  = 0.0;
-      rightRef = 0.0;
-    } else if (angle2Rotate > 0) {
-      leftRef  = -25.0;
-      rightRef = 25.0;
-    } else {
-      leftRef  = 25.0;
-      rightRef = -25.0;
-    }
     /*********** MOTOR1 **********/
     // measure TODO... translate rpm correctly : gear ratio
     leftController.rpm = leftWheel->numStateChange * 1.04166;
@@ -140,7 +151,7 @@ void timerISR(int signum) {
     /**************************************************/
     /*********** MOTOR2 **********/
     // measure TODO... translate rpm correctly : gear ratio
-    rightController.rpm = rightWheel->numStateChange * 1.04166;
+    rightController.rpm = rightWheel->numStateChange * 1.04166 * 2;
     rightWheel->numStateChange = 0;
 
     /**************** PI Controller *******************/
@@ -220,9 +231,9 @@ int initHallSensors() {
 int initPWM() {
     /* set pwm pin as output */
     pinMode(leftPWM, PWM_OUTPUT);
-    pinMode(leftPWMn, PWM_OUTPUT);
+//    pinMode(leftPWMn, PWM_OUTPUT);
     pinMode(rightPWM, PWM_OUTPUT);
-    pinMode(rightPWMn, PWM_OUTPUT);
+//    pinMode(rightPWMn, PWM_OUTPUT);
 
     pwmWrite(leftPWM, static_cast<int>(1024*0.5));
     pwmWrite(rightPWM, static_cast<int>(1024*0.5));
