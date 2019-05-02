@@ -35,6 +35,7 @@
 #include <netinet/in.h>           //  socket io
 #include <arpa/inet.h>            //  socket io
 #include <iostream>               //  io
+#include <wiringPi.h>             //  access raspberry pi gpio
 
 #include "hall_sensor_decode.h"   //  Decode hall sensor signal
 
@@ -65,7 +66,7 @@ typedef volatile struct Vehicle {
 /***********************************************************************/
 
 /********************* PARAMETERS ***************************************/
-const int leftPWM   =  1;     //  WiringPi  1 : BCM 18
+const int leftPWM   = 1;     //  WiringPi  1 : BCM 18
 const int rightPWM  = 23;     //  WiringPi 23 : BCM 13
 const double Ts     = 0.01;   //  sampling interval
 
@@ -247,9 +248,8 @@ int initHallSensors() {
 int initPWM() {
     /* set pwm pin as output */
     pinMode(leftPWM, PWM_OUTPUT);
-//    pinMode(leftPWMn, PWM_OUTPUT);
+
     pinMode(rightPWM, PWM_OUTPUT);
-//    pinMode(rightPWMn, PWM_OUTPUT);
 
     pwmWrite(leftPWM, static_cast<int>(1024*0.5));
     pwmWrite(rightPWM, static_cast<int>(1024*0.5));
