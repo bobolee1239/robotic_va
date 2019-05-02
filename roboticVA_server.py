@@ -73,7 +73,7 @@ def sslHandler(firer, direction, polar_angle):
     if direction > 180:
          direction -= 360
 
-    rospy.loginfo('[UCA Callback] src @ {:.2f}, @{:.2f}'.format(direction,
+    logger.info('[UCA Callback] src @ {:.2f}, @{:.2f}'.format(direction,
                  polar_angle))
 
     key = 5*(int(direction) // 5)
@@ -88,6 +88,7 @@ def sslHandler(firer, direction, polar_angle):
 #   --------------------------------------------------------------------------
 ##
 def playAudio(in_data, fs, effect=None):
+    return
     if DEBUG:
         sd.play(in_data, fs)
 
@@ -118,7 +119,7 @@ if __name__ == '__main__':
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # server_addr
-    server_addr = ('140.114.57.81', 7777)
+    server_addr = ('127.0.0.1', 8888)
 
     logger.info('Binding to {0[0]}:{0[1]}'.format(server_addr))
     sock.bind(server_addr)
@@ -128,7 +129,7 @@ if __name__ == '__main__':
     # waiting for connectino
     logger.info('Waiting for connection ...')
     connection, client_addr = sock.accept()
-    logger.info('Connection from ', client_addr)
+    logger.info('Connection from {}'.format(client_addr[0]))
 
     ##
     #       Robotic VA Routine
@@ -207,29 +208,30 @@ if __name__ == '__main__':
     #   2. publish command
     ##
     logger.info('[ROBOTIC VA] loc_history len: {}'.format(len(loc_history)))
-    rogger.info('[ROBOTIC VA]\n loc_history: {}'.format(loc_history))
+    logger.info('[ROBOTIC VA]\n loc_history: {}'.format(loc_history))
 
     goal = max(loc_history, key=lambda k: loc_history[k])
     logger.info('[ROBOTIC VA] goal: {}'.format(goal))
 
-    rotation_time      = 4
+    rotation_time      = 3
 
     linear  = 0.0
     angular = float(goal) * 0.01745329251 / rotation_time
     command = np.array([linear, angular], dtype='float32')
 
     #  send to client
-    sock.sendall(command.tostring())
+    connection.sendall(command.tostring())
 
-    time.sleep(rotation_time)
+    time.sleep(rotation_time + 1)
 
     linear  = 0.0
     angular = 0.0
     command = np.array([linear, angular], dtype='float32')
 
     # send to client again
-    sock.sendall(command.tostring())
+    connection.sendall(command.tostring())
 
+    sock.close()
     # empty the history
     loc_history = {}
 

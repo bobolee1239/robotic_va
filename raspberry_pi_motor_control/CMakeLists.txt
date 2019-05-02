@@ -12,3 +12,6 @@ target_link_libraries(motor_control wiringPi)
 
 add_executable(test_rpm ${TEST_RPM})
 target_link_libraries(test_rpm wiringPi)
+
+add_executable(simple_vehicle src/simple_vehicle.cpp)
+target_link_libraries(simple_vehicle wiringPi)

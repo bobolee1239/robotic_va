@@ -33,6 +33,7 @@
 #include <sys/time.h>             //  virtual timer real
 #include <sys/socket.h>           //  socket io
 #include <netinet/in.h>           //  socket io
+#include <arpa/inet.h>            //  socket io
 #include <iostream>               //  io
 
 #include "hall_sensor_decode.h"   //  Decode hall sensor signal
@@ -94,26 +95,28 @@ int main(int argc, char* argv[]) {
     int sockfd, err;
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
       std::cerr << "[Simple Vehicle] Fail to create a socket!" << std::endl;
+      return -1;
     }
 
     //  localhost
     struct sockaddr_in info;
-    memset(&info, sizeof(info));
+    memset(&info, 0, sizeof(info));
     info.sin_family = PF_INET;
 
     info.sin_addr.s_addr = inet_addr("127.0.0.1");
     info.sin_port        = htons(8888);
 
-    if ((err = connect(sockfd, (struct sockaddr*)&info, sizof(info))) == -1) {
+    if ((err = connect(sockfd, (struct sockaddr*)&info, sizeof(info))) == -1) {
       std::cerr << "[Simple Vehicle] Connection error!" << std::endl;
+      return -1;
     }
 
     char recvMsg[8] = {};
     while (1) {
         /* Wait for server command */
         recv(sockfd, recvMsg, 8, 0);
-        float linear  = *(static_cast<float *>(recvMsg));
-        float angular = *(static_cast<float *>(recvMsg + 4));
+        float linear  = *((float*)(recvMsg));
+        float angular = *((float*)(recvMsg + 4));
 
         car.refV = linear;
         car.refW = angular;
@@ -126,11 +129,6 @@ int main(int argc, char* argv[]) {
     /* release memory */
     closeHallSensor();
     return 0;
-}
-
-void commandHandler(const geometry_msgs::Twist& recvMsg) {
-    car.refV = recvMsg.linear.x;
-    car.refW = recvMsg.angular.z;
 }
 
 void timerISR(int signum) {
