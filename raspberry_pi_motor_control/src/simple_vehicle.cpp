@@ -78,6 +78,13 @@ Vehicle_t car = {0.0989, 0.2748, 0.0, 0.0, 0.0, 0.0};
 /***********************************************************************/
 
 int main(int argc, char* argv[]) {
+    if (argc != 3) {
+      std::cout << "Usage: ./simple_vehicle <host_ip_addr> <host_port_num>"
+                << std::endl;
+      exit(-1);
+    }
+    int server_port_num = (u_short)atoi(argv[2]);
+
     /* Setup wiringPi */
     if (wiringPiSetup() < 0) {
         std::cerr << "Unable to setup wiringPi: "
@@ -104,8 +111,8 @@ int main(int argc, char* argv[]) {
     memset(&info, 0, sizeof(info));
     info.sin_family = PF_INET;
 
-    info.sin_addr.s_addr = inet_addr("127.0.0.1");
-    info.sin_port        = htons(8888);
+    info.sin_addr.s_addr = inet_addr(argv[1]);
+    info.sin_port        = htons(server_port_num);
 
     if ((err = connect(sockfd, (struct sockaddr*)&info, sizeof(info))) == -1) {
       std::cerr << "[Simple Vehicle] Connection error!" << std::endl;

@@ -40,7 +40,8 @@ import time                                  # for sleep ...
 import boto3                                 # to send AJAX request to AWS LEX
 import numpy as np                           # science computation
 from scipy import signal                     # resamping signal
-import socket
+import socket                                # socket i/o
+import sys                                   # parse command line argument
 
 if DEBUG:
     import sounddevice as sd                 # for debuggin sake
@@ -94,6 +95,12 @@ def playAudio(in_data, fs, effect=None):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) != 3:
+        print('Usage: python3 ./roboticVA <host_ip_addr> <host_port_num>')
+        exit(-1)
+    server_ip_addr  = sys.argv[1]
+    server_port_num = sys.argv[2]
+
     # setup logger level
     logging.basicConfig(level=logging.INFO)
 
@@ -119,7 +126,7 @@ if __name__ == '__main__':
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     # server_addr
-    server_addr = ('127.0.0.1', 8888)
+    server_addr = (server_ip_addr, server_port_num)
 
     logger.info('Binding to {0[0]}:{0[1]}'.format(server_addr))
     sock.bind(server_addr)
