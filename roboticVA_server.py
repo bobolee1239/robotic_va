@@ -228,7 +228,7 @@ if __name__ == '__main__':
     #  send to client
     connection.sendall(command.tostring())
 
-    time.sleep(rotation_time + 1)
+    time.sleep(rotation_time + 2)
 
     linear  = 0.0
     angular = 0.0
