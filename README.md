@@ -1,4 +1,4 @@
-# ROS ROBOTIC VA PROJECT
+# ROBOTIC VA PROJECT
 
 __AUTHOR__ : Tsung-Han Brian Lee <br />
 __LICENSE__ : MIT
