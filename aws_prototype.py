@@ -12,7 +12,7 @@ import sounddevice as sd
 
 def sslHandler(firer, direction, polar_angle):
     pixel_ring.set_direction(direction)
-    print('In callback: src @ {:.2f}, @{:.2f}, delays = {}'.format(direction,
+    print('In callback: src @ {:.2f}, @{:.2f}'.format(direction,
             polar_angle))
 
 if __name__ == '__main__':

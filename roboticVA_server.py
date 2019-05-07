@@ -89,7 +89,6 @@ def sslHandler(firer, direction, polar_angle):
 #   --------------------------------------------------------------------------
 ##
 def playAudio(in_data, fs, effect=None):
-    return
     if DEBUG:
         sd.play(in_data, fs)
 
@@ -99,7 +98,7 @@ if __name__ == '__main__':
         print('Usage: python3 ./roboticVA <host_ip_addr> <host_port_num>')
         exit(-1)
     server_ip_addr  = sys.argv[1]
-    server_port_num = sys.argv[2]
+    server_port_num = int(sys.argv[2])
 
     # setup logger level
     logging.basicConfig(level=logging.INFO)
@@ -174,10 +173,10 @@ if __name__ == '__main__':
                 content = np.fromstring(response["audioStream"].read(), dtype="<i2")
 
                 # Play enhanced speech back
-                if DEBUG:
-                    logger.info('Playing enhanced speech ...')
-                    playAudio(enhanced / 2**14, 16000)
-                    time.sleep(3.0)
+                # if DEBUG:
+                    # logger.info('Playing enhanced speech ...')
+                    # playAudio(enhanced / 2**14, 16000)
+                    # time.sleep(3.0)
 
                 ##
                 #   Playing response back to user
