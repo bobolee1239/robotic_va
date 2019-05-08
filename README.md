@@ -5,6 +5,32 @@ __LICENSE__ : MIT
 
 ---
 
+## Usage:
+In a terminal
+```bash
+# Modify username and ip for your case
+$ ssh pi@192.168.1.181
+$ git clone https://github.com/bobolee1239/robotic_va.git
+$ cd robotic_va
+# Feel free to modify host ip address and port number
+$ python3 roboticVA_server.py 192.168.1.181 8888
+```
+
+In another terminal
+```bash
+# Modify username and ip for your case
+$ ssh pi@192.168.1.104
+$ git clone https://github.com/bobolee1239/robotic_va.git
+$ cd robotic_va/raspberry_pi_motor_control
+$ mkdir build && cd build
+$ cmake ..
+$ make
+# Feel free to modify host ip address and port number
+$ sudo ./simple_vehicle 192.168.1.181 8888
+```
+
+---
+
 ## Get Started
 
 Environment
