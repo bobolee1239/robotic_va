@@ -231,13 +231,14 @@ class UCA(object):
         # self.delays = [0] + tau
 
         # least square solution of (cos, sin)
+        # NOTE: negative to inverse looking direction kappa
         sol = np.linalg.pinv(self.tdoa_matrix).dot( \
-              (self.tdoa_measures * np.array(tau)).reshape(MIC_GROUP_N, 1))
+              (-self.tdoa_measures * np.array(tau)).reshape(MIC_GROUP_N, 1))
 
         # found out theta
-        # another 180.0 for positive value, 30.0 for respeaker architecture
+        # another 360.0 for positive value, 30.0 for respeaker architecture
         tmp = 1 if (np.sqrt(sol.T.dot(sol)) > 1) else np.sqrt(sol.T.dot(sol))
-        return ((math.atan2(sol[1], sol[0])/np.pi*180.0 + 210.0) % 360
+        return ((math.atan2(sol[1], sol[0])/np.pi*180.0 + 390.0) % 360
                 ,math.acos(tmp)/np.pi*180.0, [0] + tau)
 
     def listen(self, duration=9, timeout=3):
